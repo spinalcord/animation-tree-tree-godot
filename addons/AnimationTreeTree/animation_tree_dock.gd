@@ -1,3 +1,4 @@
+# animation_tree_dock.gd
 @tool
 extends Control
 
@@ -144,10 +145,16 @@ func _add_buttons_section(container: VBoxContainer) -> void:
 	markdown_button.tooltip_text = "Print tree structure \"briefly\" as markdown (Check out your Output Window)"
 	markdown_button.disabled = false
 	
+	var boilerplate_button = _create_action_button("", _on_boilerplate_pressed)
+	boilerplate_button.icon = editor_theme.get_icon("Script", "EditorIcons")
+	boilerplate_button.tooltip_text = "Generate boilerplate code for AnimationTree usage (Check out your Output Window)"
+	boilerplate_button.disabled = false
+	
 	button_container.add_child(copy_button)
 	button_container.add_child(paste_button)
 	button_container.add_child(delete_button)
 	button_container.add_child(markdown_button)
+	button_container.add_child(boilerplate_button)
 
 func _create_action_button(text: String, callback: Callable) -> Button:
 	var button := Button.new()
@@ -312,6 +319,15 @@ func _populate_state_machine(state_machine: AnimationNodeStateMachine, tree_item
 				transition_child_item.set_selectable(0, false)
 				# NEW: Assign an icon to the transition itself
 				transition_child_item.set_icon(0, transition_icon)
+				
+				# Store transition metadata including switch mode
+				var transition_metadata: Dictionary = {
+					"type": "transition",
+					"from": from_node,
+					"to": to_node,
+					"switch_mode": transition.switch_mode
+				}
+				transition_child_item.set_metadata(0, transition_metadata)
 
 				var expression: String = transition.get("advance_expression")
 				if not expression.is_empty():
@@ -355,7 +371,7 @@ func _get_container_children(container: AnimationNode, prefix: String) -> Array:
 	return child_names
 
 #### Additional "Sugar":
-
+###### Markdown
 func export_tree_structure_as_markdown() -> String:
 	if not selected_animation_tree or not tree_view.get_root():
 		return "# No Animation Tree\n\nNo AnimationTree selected or tree is empty."
@@ -377,25 +393,26 @@ func _tree_item_to_markdown(item: TreeItem, depth: int) -> String:
 	var metadata = item.get_metadata(0)
 	
 	# Check metadata type first
-	if metadata is Dictionary and metadata.get("type") == "expression":
-		# Expression item - put in code block
-		var expression: String = metadata.get("expression", "")
-		result += "%s```gdscript\n%s%s\n%s```\n" % [indent, indent,  expression, indent]
-	elif not item.is_selectable(0):
-		# Other non-selectable items (Transitions folder, transition items)
-		if item_text == "Transitions":
-			result += "%s%s⇆ **%s**\n" % [indent, bullet, item_text]
+	if metadata is Dictionary:
+		if metadata.get("type") == "expression":
+			# Expression item - put in code block
+			var expression: String = metadata.get("expression", "")
+			result += "%s```gdscript\n%s%s\n%s```\n" % [indent, indent,  expression, indent]
+		elif metadata.get("type") == "transition":
+			# Transition item with switch mode
+			var from: String = metadata.get("from", "")
+			var to: String = metadata.get("to", "")
+			var switch_mode: int = metadata.get("switch_mode", 0)
+			var switch_mode_text: String = _get_switch_mode_text(switch_mode)
+			result += "%s%s%s%s → %s [SwitchMode=%s]\n" % [indent, bullet, _get_markdown_icon_for_type("NULL"), from, to, switch_mode_text]
 		else:
-			# Regular transition
-			result += "%s%s%s%s\n" % [indent, bullet, _get_markdown_icon_for_type("NULL"), item_text.replace("->", "➤")]
-	else:
-		# Regular node with metadata
-		if metadata is Dictionary:
+			# Regular node with metadata
 			var node_type: String = metadata.get("node_type", "Unknown")
 			var icon: String = _get_markdown_icon_for_type(node_type)
 			result += "%s%s%s **%s**\n" % [indent, bullet, icon, item_text]
-		else:
-			result += "%s%s🔹 %s\n" % [indent, bullet, item_text]
+	else:
+		# Regular node without proper metadata
+		result += "%s%s🔹 %s\n" % [indent, bullet, item_text]
 	
 	# Process children
 	var child: TreeItem = item.get_first_child()
@@ -404,6 +421,17 @@ func _tree_item_to_markdown(item: TreeItem, depth: int) -> String:
 		child = child.get_next()
 	
 	return result
+
+func _get_switch_mode_text(switch_mode: int) -> String:
+	match switch_mode:
+		0: # AnimationNodeStateMachineTransition.SWITCH_MODE_IMMEDIATE
+			return "Immediate"
+		1: # AnimationNodeStateMachineTransition.SWITCH_MODE_SYNC
+			return "Sync"
+		2: # AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END
+			return "At End"
+		_:
+			return "Unknown"
 	
 func _get_markdown_icon_for_type(node_type: String) -> String:
 	match node_type:
@@ -429,8 +457,146 @@ func _get_markdown_icon_for_type(node_type: String) -> String:
 			return ""
 		_:
 			return "🔹"
+####### Gd script boilerplate
+func _on_boilerplate_pressed() -> void:
+	print(generate_animation_tree_boilerplate())
 
-#############
+func generate_animation_tree_boilerplate() -> String:
+	if not selected_animation_tree or not selected_animation_tree.tree_root:
+		return "# No Animation Tree\n\n# No AnimationTree selected or tree is empty."
+	
+	var boilerplate: String = "# Generated AnimationTree Boilerplate Code\n"
+	boilerplate += "# Copy this code into your character script\n\n"
+	
+	# Generate @onready variables
+	var state_machines: Array[Dictionary] = _collect_state_machines(selected_animation_tree.tree_root, "")
+	boilerplate += _generate_onready_variables(state_machines)
+	boilerplate += "\n"
+	
+	# Generate match statements
+	boilerplate += _generate_match_statements(state_machines)
+	
+	return boilerplate
+
+func _collect_state_machines(node: AnimationNode, path: String) -> Array[Dictionary]:
+	var state_machines: Array[Dictionary] = []
+	
+	if node is AnimationNodeStateMachine:
+		var state_machine_info: Dictionary = {
+			"path": path,
+			"variable_name": _path_to_variable_name(path),
+			"states": _get_state_machine_states(node as AnimationNodeStateMachine),
+			"node": node
+		}
+		state_machines.append(state_machine_info)
+		
+		# Recursively check child states for nested state machines
+		var state_names: Array = _get_container_children(node, "states")
+		for state_name in state_names:
+			var child_path: String = _build_child_path(path, state_name)
+			var state_node: AnimationNode = node.get("states/%s/node" % state_name) as AnimationNode
+			if state_node:
+				var child_state_machines: Array[Dictionary] = _collect_state_machines(state_node, child_path)
+				state_machines.append_array(child_state_machines)
+	
+	elif node is AnimationNodeBlendTree:
+		# Check blend tree nodes for state machines
+		var node_names: Array = _get_container_children(node, "nodes")
+		for node_name in node_names:
+			if node_name == "output":
+				continue
+			var child_path: String = _build_child_path(path, node_name)
+			var blend_node: AnimationNode = _get_blend_tree_node(node, node_name)
+			if blend_node:
+				var child_state_machines: Array[Dictionary] = _collect_state_machines(blend_node, child_path)
+				state_machines.append_array(child_state_machines)
+	
+	return state_machines
+
+func _get_state_machine_states(state_machine: AnimationNodeStateMachine) -> Array[String]:
+	var states: Array[String] = []
+	var state_names: Array = _get_container_children(state_machine, "states")
+	for state_name in state_names:
+		states.append(state_name as String)
+	return states
+
+func _path_to_variable_name(path: String) -> String:
+	# Split the path by "/" and return the last part
+	var parts: PackedStringArray = path.split("/")
+	return parts[parts.size() - 1].to_snake_case()
+
+func _generate_onready_variables(state_machines: Array[Dictionary]) -> String:
+	var code: String = "# Generated AnimationNodeStateMachinePlayback variables\n"
+	
+	for sm_info in state_machines:
+		var path: String = sm_info.path
+		var var_name: String = sm_info.variable_name
+		
+		# Build the parameter path for playback
+		var param_path: String = "parameters"
+		if not path.is_empty():
+			param_path += "/" + path
+		param_path += "/playback"
+		
+		code += "@onready var %s: AnimationNodeStateMachinePlayback = animation_tree.get(\"%s\")\n" % [var_name, param_path]
+	
+	return code
+
+func _generate_match_statements(state_machines: Array[Dictionary]) -> String:
+	var code: String = "# Generated match statements\n"
+	code += "# Add this to your _physics_process or appropriate function\n\n"
+	
+	if state_machines.is_empty():
+		return code + "# No state machines found\n"
+	
+	# Find the top-level state machine (shortest path or first StateMachine found)
+	var main_sm: Dictionary
+	var shortest_path_length: int = 999
+	
+	for sm_info in state_machines:
+		var path_parts = sm_info.path.split("/") if not sm_info.path.is_empty() else []
+		if path_parts.size() < shortest_path_length:
+			shortest_path_length = path_parts.size()
+			main_sm = sm_info
+	
+	if main_sm.is_empty():
+		return code + "# No main state machine found\n"
+	
+	code += _generate_match_statement_recursive(main_sm, state_machines, 0)
+	
+	return code
+
+func _generate_match_statement_recursive(sm_info: Dictionary, all_state_machines: Array[Dictionary], indent_level: int) -> String:
+	var indent: String = "\t".repeat(indent_level)
+	var var_name: String = sm_info.variable_name
+	var states: Array[String] = sm_info.states
+	
+	var code: String = "%smatch %s.get_current_node():\n" % [indent, var_name]
+	
+	for state in states:
+		code += "%s\t\"%s\":\n" % [indent, state]
+		
+		# Check if this state has a nested state machine
+		var nested_sm: Dictionary = _find_nested_state_machine(sm_info.path, state, all_state_machines)
+		if not nested_sm.is_empty():
+			code += _generate_match_statement_recursive(nested_sm, all_state_machines, indent_level + 2)
+		else:
+			code += "%s\t\t# TODO: Add logic for %s\n" % [indent, state]
+	
+	code += "%s\t_: # Default case\n" % [indent]
+	code += "%s\t\tpass\n" % [indent]
+	
+	return code
+
+func _find_nested_state_machine(parent_path: String, state_name: String, all_state_machines: Array[Dictionary]) -> Dictionary:
+	var target_path: String = _build_child_path(parent_path, state_name)
+	
+	for sm_info in all_state_machines:
+		if sm_info.path == target_path:
+			return sm_info
+	
+	return {}
+##########################################
 func _build_child_path(parent_path: String, child_name: String) -> String:
 	return "%s/%s" % [parent_path, child_name] if not parent_path.is_empty() else child_name
 
@@ -458,7 +624,7 @@ func _add_tree_item(parent_item: TreeItem, node_name: String, node: AnimationNod
 		if _can_have_children(node):
 			_populate_tree_item(node, child_item, path)
 	else:
-		child_item.set_text(0, "%s (NULL)" % node_name)
+		child_item.set_text(0, "%s Node" % node_name)
 		var metadata: Dictionary = {
 			"path": path,
 			"node_type": "NULL",
