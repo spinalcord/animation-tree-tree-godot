@@ -3,7 +3,7 @@
 # Backup  
 Back up your `.tscn` file.
 
-# AnimationTree‑Tree (Alpha)  
+# AnimationTree‑Tree (Prototype)  
 Enhances the AnimationTree experience by adding features:
 
 - Mainly: copy, paste, and delete AnimationTree nodes  
