@@ -4,6 +4,13 @@ extends EditorPlugin
 var dock: Control
 var clipboard_data: Dictionary = {}
 
+# Debug mode flag - set to false to disable debug prints
+const DEBUG_MODE: bool = true
+
+func debug_print(message: String) -> void:
+	if DEBUG_MODE:
+		print(message)
+
 func _enter_tree() -> void:
 	# Add the custom dock to the left UL dock
 	dock = preload("./animation_tree_dock.gd").new()
@@ -16,7 +23,7 @@ func _enter_tree() -> void:
 	
 	scene_changed.connect(_on_scene_changed)
 
-	print("Animation Tree Copy/Paste Plugin loaded")
+	debug_print("AnimationTree-Tree Plugin loaded")
 
 func _on_scene_changed(scene_root: Node) -> void:
 	# Only update if we have a valid dock and AnimationTree selected
@@ -48,18 +55,18 @@ func _exit_tree() -> void:
 func _on_copy_requested(animation_tree: AnimationTree, node_path: String) -> void:
 	# Add validation to prevent null parameter errors
 	if not is_instance_valid(animation_tree) or not animation_tree.tree_root:
-		print("No valid Animation Tree selected")
+		debug_print("No valid Animation Tree selected")
 		return
 	
 	var node: AnimationNode = _get_node_at_path(animation_tree.tree_root, node_path)
 	if not is_instance_valid(node):
-		print("Node not found at path: ", node_path)
+		debug_print("Node not found at path: " + node_path)
 		return
 	
 	# Deep copy the animation node with safety checks
 	var copied_node: AnimationNode = _deep_copy_animation_node(node)
 	if not is_instance_valid(copied_node):
-		print("Failed to copy animation node")
+		debug_print("Failed to copy animation node")
 		return
 	
 	clipboard_data = {
@@ -75,25 +82,25 @@ func _on_copy_requested(animation_tree: AnimationTree, node_path: String) -> voi
 	if is_instance_valid(dock):
 		dock._update_clipboard_status(true, node.get_class(), animation_tree.name)
 	
-	print("Copied node: ", node.get_class(), " from path: ", node_path, " (from tree: ", animation_tree.name, ")")
+	debug_print("Copied node: " + node.get_class() + " from path: " + node_path + " (from tree: " + animation_tree.name + ")")
 
 # Enhanced paste function with better cross-tree support
 func _on_paste_requested(animation_tree: AnimationTree, target_path: String) -> void:
 	if not clipboard_data.has("node"):
-		print("Nothing in clipboard")
+		debug_print("Nothing in clipboard")
 		if is_instance_valid(dock):
 			dock._update_clipboard_status(false, "", "")
 		return
 	
 	# Validate animation tree and node
 	if not is_instance_valid(animation_tree) or not is_instance_valid(animation_tree.tree_root):
-		print("No valid Animation Tree selected")
+		debug_print("No valid Animation Tree selected")
 		return
 	
 	# Validate clipboard node is still valid
 	var clipboard_node = clipboard_data.node as AnimationNode
 	if not is_instance_valid(clipboard_node):
-		print("Clipboard node is no longer valid")
+		debug_print("Clipboard node is no longer valid")
 		clipboard_data.clear()
 		if is_instance_valid(dock):
 			dock._update_clipboard_status(false, "", "")
@@ -102,18 +109,18 @@ func _on_paste_requested(animation_tree: AnimationTree, target_path: String) -> 
 	# Get the target node directly instead of its parent
 	var target_node: AnimationNode = _get_node_at_path(animation_tree.tree_root, target_path)
 	if not is_instance_valid(target_node):
-		print("Target node not found at path: ", target_path)
+		debug_print("Target node not found at path: " + target_path)
 		return
 	
 	# Check if target can accept children
 	if not (target_node is AnimationNodeStateMachine or target_node is AnimationNodeBlendTree):
-		print("Target node cannot accept children. Target type: ", target_node.get_class())
+		debug_print("Target node cannot accept children. Target type: " + target_node.get_class())
 		return
 	
 	# Create new node from clipboard (always create a fresh copy)
 	var new_node: AnimationNode = _deep_copy_animation_node(clipboard_node)
 	if not is_instance_valid(new_node):
-		print("Failed to create copy of clipboard node")
+		debug_print("Failed to create copy of clipboard node")
 		return
 	
 	# Add directly to target node
@@ -127,8 +134,8 @@ func _on_paste_requested(animation_tree: AnimationTree, target_path: String) -> 
 	if clipboard_data.has("source_tree_name"):
 		source_info = " from tree: " + str(clipboard_data.source_tree_name)
 	
-	print("Pasted node: ", clipboard_data.node_type, " to path: ", target_path, 
-		  " (to tree: ", animation_tree.name, ")", source_info)
+	debug_print("Pasted node: " + clipboard_data.node_type + " to path: " + target_path + 
+		  " (to tree: " + animation_tree.name + ")" + source_info)
 
 func _update_dock_tree_safely() -> void:
 	# Ensure dock is still valid and has parent
@@ -140,11 +147,11 @@ func _update_dock_tree_safely() -> void:
 func _on_delete_requested(animation_tree: AnimationTree, node_path: String) -> void:
 	# Add validation to prevent null parameter errors
 	if not is_instance_valid(animation_tree) or not is_instance_valid(animation_tree.tree_root):
-		print("No valid Animation Tree selected")
+		debug_print("No valid Animation Tree selected")
 		return
 	
 	if node_path.is_empty():
-		print("Cannot delete root node")
+		debug_print("Cannot delete root node")
 		return
 	
 	var node: AnimationNode = _get_node_at_path(animation_tree.tree_root, node_path)
@@ -164,7 +171,7 @@ func _on_delete_requested(animation_tree: AnimationTree, node_path: String) -> v
 			if is_instance_valid(dock) and dock.get_parent() != null:
 				dock.get_parent().add_child(dialog)
 			else:
-				print("Could not show confirmation dialog - no valid parent")
+				debug_print("Could not show confirmation dialog - no valid parent")
 				return
 		
 		dialog.popup_centered()
@@ -183,7 +190,7 @@ func _on_delete_requested(animation_tree: AnimationTree, node_path: String) -> v
 			if is_instance_valid(dock):
 				call_deferred("_update_dock_tree_safely")
 		
-		print("Deleted node: ", node.get_class(), " from path: ", node_path)
+		debug_print("Deleted node: " + node.get_class() + " from path: " + node_path)
 
 # Helper function to get clipboard status
 func get_clipboard_status() -> Dictionary:
@@ -224,7 +231,7 @@ func _deep_copy_animation_node(node: AnimationNode) -> AnimationNode:
 	
 	# Validate the copy was successful
 	if not is_instance_valid(copied_node):
-		print("Failed to duplicate animation node")
+		debug_print("Failed to duplicate animation node")
 		return null
 		
 	return copied_node
@@ -288,11 +295,11 @@ func _get_parent_path(path: String) -> String:
 
 # Adds nodes directly to container with new naming scheme
 func _add_node_to_container(container: AnimationNode, node: AnimationNode, container_path: String) -> void:
-	print("Attempting to add node to container: ", container.get_class())
+	debug_print("Attempting to add node to container: " + container.get_class())
 	
 	# Validate inputs to prevent null parameter errors
 	if not is_instance_valid(container) or not is_instance_valid(node):
-		print("Invalid container or node for adding")
+		debug_print("Invalid container or node for adding")
 		return
 	
 	# Generate name with "new" prefix and original node class name + random ID
@@ -304,23 +311,23 @@ func _add_node_to_container(container: AnimationNode, node: AnimationNode, conta
 		var state_machine := container as AnimationNodeStateMachine
 		# Generate unique name for state
 		var unique_name: String = _get_unique_state_name(state_machine, base_name)
-		print("Adding state: ", unique_name, " to StateMachine")
+		debug_print("Adding state: " + unique_name + " to StateMachine")
 		
 		# Calculate a good position near existing nodes
 		var new_position: Vector2 = _calculate_good_position_for_state(state_machine)
-		print("Calculated position for new state: ", new_position)
+		debug_print("Calculated position for new state: " + str(new_position))
 		
 		# Use Godot 4 API with validation
 		if state_machine.has_method("add_node"):
 			state_machine.add_node(unique_name, node, new_position)
-			print("Added state using add_node method")
+			debug_print("Added state using add_node method")
 		else:
-			print("add_node method not available, using property access")
+			debug_print("add_node method not available, using property access")
 			var state_property: String = "states/" + unique_name + "/node"
 			var position_property: String = "states/" + unique_name + "/position"
 			state_machine.set(state_property, node)
 			state_machine.set(position_property, new_position)
-			print("Set state via property: ", state_property, " at position: ", new_position)
+			debug_print("Set state via property: " + state_property + " at position: " + str(new_position))
 		
 		# Force notification of changes with validation
 		if state_machine.has_method("emit_changed"):
@@ -330,23 +337,23 @@ func _add_node_to_container(container: AnimationNode, node: AnimationNode, conta
 		var blend_tree := container as AnimationNodeBlendTree
 		# Generate unique name for blend node
 		var unique_name: String = _get_unique_node_name(blend_tree, base_name)
-		print("Adding node: ", unique_name, " to BlendTree")
+		debug_print("Adding node: " + unique_name + " to BlendTree")
 		
 		# Calculate a good position near existing nodes
 		var new_position: Vector2 = _calculate_good_position_for_blend_node(blend_tree)
-		print("Calculated position for new blend node: ", new_position)
+		debug_print("Calculated position for new blend node: " + str(new_position))
 		
 		# Use Godot 4 API with validation
 		if blend_tree.has_method("add_node"):
 			blend_tree.add_node(unique_name, node, new_position)
-			print("Added node using add_node method")
+			debug_print("Added node using add_node method")
 		else:
-			print("add_node method not available, using property access")
+			debug_print("add_node method not available, using property access")
 			var node_property: String = "nodes/" + unique_name + "/node"
 			var position_property: String = "nodes/" + unique_name + "/position"
 			blend_tree.set(node_property, node)
 			blend_tree.set(position_property, new_position)
-			print("Set node via property: ", node_property, " at position: ", new_position)
+			debug_print("Set node via property: " + node_property + " at position: " + str(new_position))
 		
 		# Force notification of changes with validation
 		if blend_tree.has_method("emit_changed"):
@@ -367,7 +374,7 @@ func _calculate_good_position_for_state(state_machine: AnimationNodeStateMachine
 			if pos_value != null and pos_value is Vector2:
 				existing_positions.append(pos_value as Vector2)
 	
-	print("Found existing state positions: ", existing_positions)
+	debug_print("Found existing state positions: " + str(existing_positions))
 	
 	# If no existing positions, start at a reasonable default
 	if existing_positions.is_empty():
@@ -411,7 +418,7 @@ func _calculate_good_position_for_blend_node(blend_tree: AnimationNodeBlendTree)
 				if pos_value != null and pos_value is Vector2:
 					existing_positions.append(pos_value as Vector2)
 	
-	print("Found existing blend node positions: ", existing_positions)
+	debug_print("Found existing blend node positions: " + str(existing_positions))
 	
 	# If no existing positions, start at a reasonable default
 	if existing_positions.is_empty():
@@ -441,38 +448,38 @@ func _calculate_good_position_for_blend_node(blend_tree: AnimationNodeBlendTree)
 func _remove_node_from_parent(parent: AnimationNode, node: AnimationNode, full_path: String) -> void:
 	# Validate inputs to prevent null parameter errors
 	if not is_instance_valid(parent) or not is_instance_valid(node):
-		print("Invalid parent or node for removal")
+		debug_print("Invalid parent or node for removal")
 		return
 	
 	var node_name: String = _get_node_name_from_path(full_path)
 	
-	print("Attempting to remove node: ", node_name, " from parent: ", parent.get_class())
+	debug_print("Attempting to remove node: " + node_name + " from parent: " + parent.get_class())
 	
 	if parent is AnimationNodeStateMachine:
 		var state_machine := parent as AnimationNodeStateMachine
 		# Use the proper Godot 4+ API with validation
 		if state_machine.has_method("has_node") and state_machine.has_method("remove_node"):
 			if state_machine.has_node(node_name):
-				print("Found node, removing with remove_node()")
+				debug_print("Found node, removing with remove_node()")
 				state_machine.remove_node(node_name)
-				print("Successfully removed state: ", node_name)
+				debug_print("Successfully removed state: " + node_name)
 			else:
-				print("Node not found in StateMachine: ", node_name)
+				debug_print("Node not found in StateMachine: " + node_name)
 		else:
-			print("StateMachine missing required methods")
+			debug_print("StateMachine missing required methods")
 		
 	elif parent is AnimationNodeBlendTree:
 		var blend_tree := parent as AnimationNodeBlendTree
 		# Use the proper Godot 4+ API with validation
 		if blend_tree.has_method("has_node") and blend_tree.has_method("remove_node"):
 			if blend_tree.has_node(node_name):
-				print("Found node, removing with remove_node()")
+				debug_print("Found node, removing with remove_node()")
 				blend_tree.remove_node(node_name)
-				print("Successfully removed blend node: ", node_name)
+				debug_print("Successfully removed blend node: " + node_name)
 			else:
-				print("Node not found in BlendTree: ", node_name)
+				debug_print("Node not found in BlendTree: " + node_name)
 		else:
-			print("BlendTree missing required methods")
+			debug_print("BlendTree missing required methods")
 	
 	# Force notification of changes with validation
 	if parent.has_method("emit_changed"):

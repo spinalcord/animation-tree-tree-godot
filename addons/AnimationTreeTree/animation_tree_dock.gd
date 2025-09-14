@@ -21,24 +21,34 @@ var copy_button: Button
 var paste_button: Button
 var delete_button: Button
 var refresh_button: Button
+var markdown_button: Button
 
 # For automatic detection
 var editor_selection: EditorSelection
 
 func _init() -> void:
-	name = "AnimTree Copy/Paste"
+	name = "AnimationTree-Tree"
 	_create_ui()
 	_setup_auto_detection()
-
+	
+	
 func _setup_auto_detection() -> void:
 	# Connect to editor selection changes for automatic detection
 	editor_selection = EditorInterface.get_selection()
 	if editor_selection:
+		# we need to refresh the TreeView properly if editor selection changes
 		editor_selection.selection_changed.connect(_on_editor_selection_changed)
-		debug_print("Connected to editor selection changes")
+	
+	# Might be a aggressiv way but in that way can refresh our Tree Structure if something
+	# in the AnimationTreeEditor changes
+	EditorInterface.get_editor_undo_redo().history_changed.connect(_on_editor_selection_changed)
+	
 	_detect_selected_animation_tree()
 
 func _detect_selected_animation_tree() -> void:
+	if editor_selection == null:
+		return
+		
 	var selected_nodes: Array[Node] = editor_selection.get_selected_nodes()
 	
 	for node in selected_nodes:
@@ -46,11 +56,17 @@ func _detect_selected_animation_tree() -> void:
 			debug_print("Auto-detected AnimationTree: %s" % node.name)
 			_set_animation_tree(node as AnimationTree)
 			return
+	
 	debug_print("No AnimationTree in current selection")
 	
 func _on_editor_selection_changed() -> void:
-	# Automatically detect AnimationTree when selection changes
-	_detect_selected_animation_tree()
+	var selection = EditorInterface.get_selection()
+	var selected_nodes = selection.get_selected_nodes()
+
+	for node in selected_nodes:
+		if node is AnimationTree:
+			_detect_selected_animation_tree()
+			
 
 func debug_print(message: String) -> void:
 	if DEBUG_MODE:
@@ -70,11 +86,10 @@ func _create_ui() -> void:
 	_add_buttons_section(vbox)
 	_add_separator(vbox)
 	_add_tree_view_section(vbox)
-	_add_refresh_button(vbox)
 
 func _add_title_section(container: VBoxContainer) -> void:
 	var title := Label.new()
-	title.text = "Animation Tree Helper"
+	title.text = "AnimationTree-Tree"
 	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	container.add_child(title)
 
@@ -121,13 +136,30 @@ func _add_buttons_section(container: VBoxContainer) -> void:
 	var button_container := HBoxContainer.new()
 	container.add_child(button_container)
 	
-	copy_button = _create_action_button("Copy", _on_copy_pressed)
-	paste_button = _create_action_button("Paste", _on_paste_pressed)
-	delete_button = _create_action_button("Delete", _on_delete_pressed)
+	# Get editor theme for icons
+	var editor_theme = EditorInterface.get_editor_theme()
+	
+	copy_button = _create_action_button("", _on_copy_pressed)
+	copy_button.icon = editor_theme.get_icon("ActionCopy", "EditorIcons")
+	copy_button.tooltip_text = "Copy selected node"
+	
+	paste_button = _create_action_button("", _on_paste_pressed)
+	paste_button.icon = editor_theme.get_icon("ActionPaste", "EditorIcons")
+	paste_button.tooltip_text = "Paste node to selected location"
+	
+	delete_button = _create_action_button("", _on_delete_pressed)
+	delete_button.icon = editor_theme.get_icon("Remove", "EditorIcons")
+	delete_button.tooltip_text = "Delete selected node"
+	
+	markdown_button = _create_action_button("", _on_markdown_pressed)
+	markdown_button.icon = editor_theme.get_icon("FileList", "EditorIcons")
+	markdown_button.tooltip_text = "Print tree structure \"briefly\" as markdown (Check out your Output Window)"
+	markdown_button.disabled = false
 	
 	button_container.add_child(copy_button)
 	button_container.add_child(paste_button)
 	button_container.add_child(delete_button)
+	button_container.add_child(markdown_button)
 
 func _create_action_button(text: String, callback: Callable) -> Button:
 	var button := Button.new()
@@ -145,13 +177,6 @@ func _add_tree_view_section(container: VBoxContainer) -> void:
 	tree_view.item_selected.connect(_on_tree_item_selected)
 	tree_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	container.add_child(tree_view)
-
-func _add_refresh_button(container: VBoxContainer) -> void:
-	refresh_button = Button.new()
-	refresh_button.text = "Refresh Tree"
-	refresh_button.pressed.connect(_refresh_tree_view)
-	refresh_button.disabled = true
-	container.add_child(refresh_button)
 
 # New function to update clipboard status display
 func _update_clipboard_status(has_content: bool, node_type: String = "", source_tree_name: String = "") -> void:
@@ -252,6 +277,7 @@ func _refresh_tree_view() -> void:
 	root.set_metadata(0, "")
 	
 	_populate_tree_item(selected_animation_tree.tree_root, root, "")
+	
 
 func _populate_tree_item(node: AnimationNode, tree_item: TreeItem, path: String) -> void:
 	debug_print("Populating node: %s at path: %s" % [node.get_class(), path])
@@ -266,13 +292,56 @@ func _populate_tree_item(node: AnimationNode, tree_item: TreeItem, path: String)
 		debug_print("Unknown node type or leaf node: %s" % node.get_class())
 
 func _populate_state_machine(state_machine: AnimationNodeStateMachine, tree_item: TreeItem, path: String) -> void:
+	var editor_theme = EditorInterface.get_editor_theme()
+	var transitions_folder_icon = editor_theme.get_icon("ArrowRight", "EditorIcons")
+	var transition_icon = editor_theme.get_icon("ArrowRight", "EditorIcons")
+	var expression_icon = editor_theme.get_icon("Script", "EditorIcons") # Perfect fit for code/logic
+
 	var state_names: Array = _get_container_children(state_machine, "states")
 	debug_print("Got states via property inspection: %s" % str(state_names))
-	
+
 	for state_name in state_names:
 		var child_path: String = _build_child_path(path, state_name)
 		var state_node: AnimationNode = state_machine.get("states/%s/node" % state_name) as AnimationNode
 		_add_tree_item(tree_item, state_name, state_node, child_path)
+
+	var transition_count = state_machine.get_transition_count()
+	
+	if transition_count > 0:
+		var transitions_item: TreeItem = tree_item.create_child()
+		transitions_item.set_text(0, "Transitions")
+		transitions_item.set_selectable(0, false)
+		transitions_item.set_custom_color(0, Color.GOLD)
+		transitions_item.set_icon(0, transitions_folder_icon)
+		transitions_item.collapsed = true
+		for i in range(transition_count):
+			var from_node = state_machine.get_transition_from(i)
+			var to_node = state_machine.get_transition_to(i)
+			var transition: AnimationNodeStateMachineTransition = state_machine.get_transition(i)
+			
+			if transition:
+				var transition_label = "%s -> %s" % [from_node, to_node]
+				var transition_child_item: TreeItem = transitions_item.create_child()
+				transition_child_item.set_text(0, transition_label)
+				transition_child_item.set_selectable(0, false)
+				# NEW: Assign an icon to the transition itself
+				transition_child_item.set_icon(0, transition_icon)
+
+				var expression: String = transition.get("advance_expression")
+				if not expression.is_empty():
+					var expression_item: TreeItem = transition_child_item.create_child()
+					expression_item.set_text(0, "Expression: %s" % expression)
+					expression_item.set_selectable(0, false)
+					expression_item.set_custom_color(0, Color.AQUAMARINE)
+					expression_item.set_icon(0, expression_icon)
+	
+					# Add metadata for the expression
+					var expression_metadata: Dictionary = {
+						"type": "expression",
+						"expression": expression
+					}
+					expression_item.set_metadata(0, expression_metadata)
+	
 
 func _populate_blend_tree(blend_tree: AnimationNodeBlendTree, tree_item: TreeItem, path: String) -> void:
 	debug_print("Processing BlendTree node...")
@@ -299,6 +368,83 @@ func _get_container_children(container: AnimationNode, prefix: String) -> Array:
 	
 	return child_names
 
+#### Additional "Sugar":
+
+func export_tree_structure_as_markdown() -> String:
+	if not selected_animation_tree or not tree_view.get_root():
+		return "# No Animation Tree\n\nNo AnimationTree selected or tree is empty."
+	
+	var markdown: String = "# Animation Tree Structure\n\n"
+	markdown += "**Tree:** %s\n\n" % selected_animation_tree.name
+	
+	var root_item: TreeItem = tree_view.get_root()
+	markdown += _tree_item_to_markdown(root_item, 0)
+	
+	return markdown
+
+func _tree_item_to_markdown(item: TreeItem, depth: int) -> String:
+	var result: String = ""
+	var indent: String = "  ".repeat(depth)
+	var bullet: String = "- " if depth > 0 else ""
+	
+	var item_text: String = item.get_text(0)
+	var metadata = item.get_metadata(0)
+	
+	# Check metadata type first
+	if metadata is Dictionary and metadata.get("type") == "expression":
+		# Expression item - put in code block
+		var expression: String = metadata.get("expression", "")
+		result += "%s```gdscript\n%s%s\n%s```\n" % [indent, indent,  expression, indent]
+	elif not item.is_selectable(0):
+		# Other non-selectable items (Transitions folder, transition items)
+		if item_text == "Transitions":
+			result += "%s%s⇆ **%s**\n" % [indent, bullet, item_text]
+		else:
+			# Regular transition
+			result += "%s%s%s%s\n" % [indent, bullet, _get_markdown_icon_for_type("NULL"), item_text.replace("->", "➤")]
+	else:
+		# Regular node with metadata
+		if metadata is Dictionary:
+			var node_type: String = metadata.get("node_type", "Unknown")
+			var icon: String = _get_markdown_icon_for_type(node_type)
+			result += "%s%s%s **%s**\n" % [indent, bullet, icon, item_text]
+		else:
+			result += "%s%s🔹 %s\n" % [indent, bullet, item_text]
+	
+	# Process children
+	var child: TreeItem = item.get_first_child()
+	while child:
+		result += _tree_item_to_markdown(child, depth + 1)
+		child = child.get_next()
+	
+	return result
+	
+func _get_markdown_icon_for_type(node_type: String) -> String:
+	match node_type:
+		"AnimationNodeStateMachine":
+			return "🔀"
+		"AnimationNodeBlendTree":
+			return "🌳"
+		"AnimationNodeAnimation":
+			return "🎬"
+		"AnimationNodeBlendSpace1D":
+			return "📊"
+		"AnimationNodeBlendSpace2D":
+			return "📈"
+		"AnimationNodeAdd2", "AnimationNodeAdd3":
+			return "➕"
+		"AnimationNodeBlend2", "AnimationNodeBlend3":
+			return "🔀"
+		"AnimationNodeOneShot":
+			return "🔥"
+		"AnimationNodeTransition":
+			return "🔄"
+		"NULL":
+			return ""
+		_:
+			return "🔹"
+
+#############
 func _build_child_path(parent_path: String, child_name: String) -> String:
 	return "%s/%s" % [parent_path, child_name] if not parent_path.is_empty() else child_name
 
@@ -307,18 +453,33 @@ func _get_blend_tree_node(blend_tree: AnimationNodeBlendTree, node_name: String)
 		return blend_tree.get_node(node_name) as AnimationNode
 	return blend_tree.get("nodes/%s/node" % node_name) as AnimationNode
 
+# Instead of storing just the path as metadata, store a dictionary
 func _add_tree_item(parent_item: TreeItem, node_name: String, node: AnimationNode, path: String) -> void:
 	var child_item: TreeItem = parent_item.create_child()
 	
 	if node:
 		child_item.set_text(0, "%s (%s)" % [node_name, node.get_class()])
-		child_item.set_metadata(0, path)
+		
+		# Store both path and node type information
+		var metadata: Dictionary = {
+			"path": path,
+			"node_type": node.get_class(),
+			"node_name": node_name,
+			"has_children": _can_have_children(node)
+		}
+		child_item.set_metadata(0, metadata)
 		
 		if _can_have_children(node):
 			_populate_tree_item(node, child_item, path)
 	else:
 		child_item.set_text(0, "%s (NULL)" % node_name)
-		child_item.set_metadata(0, path)
+		var metadata: Dictionary = {
+			"path": path,
+			"node_type": "NULL",
+			"node_name": node_name,
+			"has_children": false
+		}
+		child_item.set_metadata(0, metadata)
 
 func _is_blend_space(node: AnimationNode) -> bool:
 	return node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D
@@ -326,26 +487,37 @@ func _is_blend_space(node: AnimationNode) -> bool:
 func _can_have_children(node: AnimationNode) -> bool:
 	return node is AnimationNodeStateMachine or node is AnimationNodeBlendTree
 
+func _set_path_display(text: String, color: Color) -> void:
+	path_label.text = text
+	path_label.modulate = color
+
+# Fix _on_tree_item_selected
 func _on_tree_item_selected() -> void:
 	var selected_item: TreeItem = tree_view.get_selected()
 	if not selected_item:
 		_set_path_display("No selection", Color.GRAY)
 		return
 	
-	var item_path: String = selected_item.get_metadata(0)
+	var metadata = selected_item.get_metadata(0)
+	var item_path: String
+	
+	# Handle both old string format and new dictionary format
+	if metadata is Dictionary:
+		item_path = metadata.get("path", "")
+	else:
+		item_path = str(metadata) if metadata != null else ""
+	
 	var display_text: String = item_path if not item_path.is_empty() else "Root"
 	_set_path_display(display_text, Color.WHITE)
 
-func _set_path_display(text: String, color: Color) -> void:
-	path_label.text = text
-	path_label.modulate = color
-
+# Fix the button press handlers
 func _on_copy_pressed() -> void:
 	var selected_item: TreeItem = tree_view.get_selected()
 	if not _validate_selection(selected_item):
 		return
 		
-	var node_path: String = selected_item.get_metadata(0)
+	var metadata = selected_item.get_metadata(0)
+	var node_path: String = metadata.get("path", "") if metadata is Dictionary else str(metadata)
 	copy_requested.emit(selected_animation_tree, node_path)
 
 func _on_paste_pressed() -> void:
@@ -353,7 +525,8 @@ func _on_paste_pressed() -> void:
 	if not _validate_selection(selected_item):
 		return
 		
-	var target_path: String = selected_item.get_metadata(0)
+	var metadata = selected_item.get_metadata(0)
+	var target_path: String = metadata.get("path", "") if metadata is Dictionary else str(metadata)
 	paste_requested.emit(selected_animation_tree, target_path)
 
 func _on_delete_pressed() -> void:
@@ -361,12 +534,17 @@ func _on_delete_pressed() -> void:
 	if not _validate_selection(selected_item):
 		return
 		
-	var node_path: String = selected_item.get_metadata(0)
+	var metadata = selected_item.get_metadata(0)
+	var node_path: String = metadata.get("path", "") if metadata is Dictionary else str(metadata)
 	if node_path.is_empty():
 		debug_print("Cannot delete root node")
 		return
 		
 	delete_requested.emit(selected_animation_tree, node_path)
+
+func _on_markdown_pressed() -> void:
+	print(export_tree_structure_as_markdown())
+
 
 func _validate_selection(selected_item: TreeItem) -> bool:
 	if not selected_animation_tree:
@@ -395,7 +573,8 @@ func _capture_tree_state() -> Dictionary:
 	
 	var selected_item: TreeItem = tree_view.get_selected()
 	if selected_item:
-		state.selected_path = selected_item.get_metadata(0)
+		var metadata = selected_item.get_metadata(0)
+		state.selected_path = metadata.get("path", "") if metadata is Dictionary else str(metadata)
 	
 	var root_item: TreeItem = tree_view.get_root()
 	if root_item:
@@ -414,19 +593,34 @@ func _restore_tree_state(state: Dictionary) -> void:
 	if not selected_path.is_empty():
 		_select_item_by_path(tree_view.get_root(), selected_path)
 
+# Fix _collect_expanded_items
 func _collect_expanded_items(item: TreeItem, expanded_paths: Array) -> void:
 	if not item.is_collapsed() and item != tree_view.get_root():
-		var path: Variant = item.get_metadata(0)
-		if path != null and path != "":
+		var metadata = item.get_metadata(0)
+		var path: String
+		
+		if metadata is Dictionary:
+			path = metadata.get("path", "")
+		else:
+			path = str(metadata) if metadata != null else ""
+			
+		if not path.is_empty():
 			expanded_paths.append(path)
 			debug_print("Found expanded item: %s" % path)
 	
 	_process_tree_children(item, func(child: TreeItem): _collect_expanded_items(child, expanded_paths))
 
+# Fix _restore_expanded_items
 func _restore_expanded_items(item: TreeItem, expanded_paths: Array) -> void:
-	var item_path: Variant = item.get_metadata(0)
+	var metadata = item.get_metadata(0)
+	var item_path: String
 	
-	if item_path != null and item_path in expanded_paths:
+	if metadata is Dictionary:
+		item_path = metadata.get("path", "")
+	else:
+		item_path = str(metadata) if metadata != null else ""
+	
+	if not item_path.is_empty() and item_path in expanded_paths:
 		item.set_collapsed(false)
 		debug_print("Restored expanded state for: %s" % item_path)
 	elif item != tree_view.get_root():
@@ -434,8 +628,17 @@ func _restore_expanded_items(item: TreeItem, expanded_paths: Array) -> void:
 	
 	_process_tree_children(item, func(child: TreeItem): _restore_expanded_items(child, expanded_paths))
 
+# Fix _select_item_by_path
 func _select_item_by_path(item: TreeItem, target_path: String) -> bool:
-	if item.get_metadata(0) == target_path:
+	var metadata = item.get_metadata(0)
+	var item_path: String
+	
+	if metadata is Dictionary:
+		item_path = metadata.get("path", "")
+	else:
+		item_path = str(metadata) if metadata != null else ""
+	
+	if item_path == target_path:
 		item.select(0)
 		return true
 	
