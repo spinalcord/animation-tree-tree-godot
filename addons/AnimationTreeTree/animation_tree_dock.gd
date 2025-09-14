@@ -458,8 +458,17 @@ func _get_markdown_icon_for_type(node_type: String) -> String:
 		_:
 			return "🔹"
 ####### Gd script boilerplate
+
 func _on_boilerplate_pressed() -> void:
 	print(generate_animation_tree_boilerplate())
+
+func _get_state_machine_states(state_machine: AnimationNodeStateMachine) -> Array[String]:
+	var states: Array[String] = []
+	var state_names: Array = _get_container_children(state_machine, "states")
+	for state_name in state_names:
+		states.append(state_name as String)
+	return states
+
 
 func generate_animation_tree_boilerplate() -> String:
 	if not selected_animation_tree or not selected_animation_tree.tree_root:
@@ -473,8 +482,8 @@ func generate_animation_tree_boilerplate() -> String:
 	boilerplate += _generate_onready_variables(state_machines)
 	boilerplate += "\n"
 	
-	# Generate match statements
-	boilerplate += _generate_match_statements(state_machines)
+	# Generate match statements - start with root level state machines
+	boilerplate += _generate_complete_match_statements(state_machines)
 	
 	return boilerplate
 
@@ -486,7 +495,8 @@ func _collect_state_machines(node: AnimationNode, path: String) -> Array[Diction
 			"path": path,
 			"variable_name": _path_to_variable_name(path),
 			"states": _get_state_machine_states(node as AnimationNodeStateMachine),
-			"node": node
+			"node": node,
+			"parent_path": _get_parent_path(path)
 		}
 		state_machines.append(state_machine_info)
 		
@@ -513,17 +523,97 @@ func _collect_state_machines(node: AnimationNode, path: String) -> Array[Diction
 	
 	return state_machines
 
-func _get_state_machine_states(state_machine: AnimationNodeStateMachine) -> Array[String]:
-	var states: Array[String] = []
-	var state_names: Array = _get_container_children(state_machine, "states")
-	for state_name in state_names:
-		states.append(state_name as String)
-	return states
+func _get_parent_path(path: String) -> String:
+	if path.is_empty():
+		return ""
+	var parts = path.split("/")
+	if parts.size() <= 1:
+		return ""
+	parts.remove_at(parts.size() - 1)
+	return "/".join(parts)
+
+func _generate_complete_match_statements(state_machines: Array[Dictionary]) -> String:
+	var code: String = "# Generated nested match statements\n"
+	code += "# Add this to your _physics_process or appropriate function\n\n"
+	
+	if state_machines.is_empty():
+		return code + "# No state machines found\n"
+	
+	# Find root level state machines (those with empty path or shortest path)
+	var root_state_machines: Array[Dictionary] = []
+	for sm_info in state_machines:
+		if sm_info.path.is_empty() or sm_info.path.find("/") == -1:
+			root_state_machines.append(sm_info)
+	
+	# If no clear root, take the first one
+	if root_state_machines.is_empty() and state_machines.size() > 0:
+		root_state_machines.append(state_machines[0])
+	
+	# Generate match statements for each root state machine
+	for root_sm in root_state_machines:
+		code += _generate_nested_match_statements(root_sm, state_machines, 0)
+		code += "\n"
+	
+	return code
+
+func _generate_nested_match_statements(sm_info: Dictionary, all_state_machines: Array[Dictionary], indent_level: int) -> String:
+	var indent: String = "\t".repeat(indent_level)
+	var var_name: String = sm_info.variable_name
+	var states: Array[String] = sm_info.states
+	
+	var code: String = "%smatch %s.get_current_node():\n" % [indent, var_name]
+	
+	for state in states:
+		code += "%s\t\"%s\":\n" % [indent, state]
+		
+		# Check if this state has nested state machines
+		var nested_state_machines: Array[Dictionary] = _find_all_nested_state_machines(sm_info.path, state, all_state_machines)
+		
+		if nested_state_machines.size() > 0:
+			# Generate nested match statements for each nested state machine
+			for nested_sm in nested_state_machines:
+				code += "%s\t\t# Nested state machine: %s\n" % [indent, nested_sm.variable_name]
+				var nested_code = _generate_nested_match_statements(nested_sm, all_state_machines, indent_level + 2)
+				code += nested_code
+		else:
+			code += "%s\t\t# TODO: Add logic for %s state\n" % [indent, state]
+			code += "%s\t\tpass\n" % [indent]
+	
+	code += "%s\t_: # Default case\n" % [indent]
+	code += "%s\t\t# Handle unknown state\n" % [indent]
+	code += "%s\t\tpass\n" % [indent]
+	
+	return code
+
+func _find_all_nested_state_machines(parent_path: String, state_name: String, all_state_machines: Array[Dictionary]) -> Array[Dictionary]:
+	var nested_machines: Array[Dictionary] = []
+	var target_path: String = _build_child_path(parent_path, state_name)
+	
+	for sm_info in all_state_machines:
+		# Check for exact match
+		if sm_info.path == target_path:
+			nested_machines.append(sm_info)
+		# Check for state machines that are children of this state
+		elif sm_info.path.begins_with(target_path + "/"):
+			# Only include direct children, not deeper nested ones
+			var relative_path = sm_info.path.substr(target_path.length() + 1)
+			if relative_path.find("/") == -1:  # No further nesting
+				nested_machines.append(sm_info)
+	
+	return nested_machines
 
 func _path_to_variable_name(path: String) -> String:
-	# Split the path by "/" and return the last part
-	var parts: PackedStringArray = path.split("/")
-	return parts[parts.size() - 1].to_snake_case()
+	if path.is_empty():
+		return "root_state_machine"
+	
+	# Replace slashes with underscores and convert to snake_case
+	var var_name = path.replace("/", "_").to_snake_case()
+	
+	# Ensure it starts with a letter
+	if var_name[0].is_valid_int():
+		var_name = "sm_" + var_name
+	
+	return var_name + "_playback"
 
 func _generate_onready_variables(state_machines: Array[Dictionary]) -> String:
 	var code: String = "# Generated AnimationNodeStateMachinePlayback variables\n"
@@ -541,61 +631,6 @@ func _generate_onready_variables(state_machines: Array[Dictionary]) -> String:
 		code += "@onready var %s: AnimationNodeStateMachinePlayback = animation_tree.get(\"%s\")\n" % [var_name, param_path]
 	
 	return code
-
-func _generate_match_statements(state_machines: Array[Dictionary]) -> String:
-	var code: String = "# Generated match statements\n"
-	code += "# Add this to your _physics_process or appropriate function\n\n"
-	
-	if state_machines.is_empty():
-		return code + "# No state machines found\n"
-	
-	# Find the top-level state machine (shortest path or first StateMachine found)
-	var main_sm: Dictionary
-	var shortest_path_length: int = 999
-	
-	for sm_info in state_machines:
-		var path_parts = sm_info.path.split("/") if not sm_info.path.is_empty() else []
-		if path_parts.size() < shortest_path_length:
-			shortest_path_length = path_parts.size()
-			main_sm = sm_info
-	
-	if main_sm.is_empty():
-		return code + "# No main state machine found\n"
-	
-	code += _generate_match_statement_recursive(main_sm, state_machines, 0)
-	
-	return code
-
-func _generate_match_statement_recursive(sm_info: Dictionary, all_state_machines: Array[Dictionary], indent_level: int) -> String:
-	var indent: String = "\t".repeat(indent_level)
-	var var_name: String = sm_info.variable_name
-	var states: Array[String] = sm_info.states
-	
-	var code: String = "%smatch %s.get_current_node():\n" % [indent, var_name]
-	
-	for state in states:
-		code += "%s\t\"%s\":\n" % [indent, state]
-		
-		# Check if this state has a nested state machine
-		var nested_sm: Dictionary = _find_nested_state_machine(sm_info.path, state, all_state_machines)
-		if not nested_sm.is_empty():
-			code += _generate_match_statement_recursive(nested_sm, all_state_machines, indent_level + 2)
-		else:
-			code += "%s\t\t# TODO: Add logic for %s\n" % [indent, state]
-	
-	code += "%s\t_: # Default case\n" % [indent]
-	code += "%s\t\tpass\n" % [indent]
-	
-	return code
-
-func _find_nested_state_machine(parent_path: String, state_name: String, all_state_machines: Array[Dictionary]) -> Dictionary:
-	var target_path: String = _build_child_path(parent_path, state_name)
-	
-	for sm_info in all_state_machines:
-		if sm_info.path == target_path:
-			return sm_info
-	
-	return {}
 ##########################################
 func _build_child_path(parent_path: String, child_name: String) -> String:
 	return "%s/%s" % [parent_path, child_name] if not parent_path.is_empty() else child_name
