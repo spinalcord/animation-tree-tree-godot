@@ -20,7 +20,6 @@ var clipboard_status_label: Label
 var copy_button: Button
 var paste_button: Button
 var delete_button: Button
-var refresh_button: Button
 var markdown_button: Button
 
 # For automatic detection
@@ -77,7 +76,6 @@ func _create_ui() -> void:
 	add_child(vbox)
 	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	
-	_add_title_section(vbox)
 	_add_tree_selection_section(vbox)
 	_add_separator(vbox)
 	_add_clipboard_status_section(vbox)
@@ -87,18 +85,8 @@ func _create_ui() -> void:
 	_add_separator(vbox)
 	_add_tree_view_section(vbox)
 
-func _add_title_section(container: VBoxContainer) -> void:
-	var title := Label.new()
-	title.text = "AnimationTree-Tree"
-	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
-	container.add_child(title)
-
 func _add_tree_selection_section(container: VBoxContainer) -> void:
-	var select_button := Button.new()
-	select_button.text = "Force - Detect Anim.Tree"
-	select_button.pressed.connect(_auto_detect_animation_tree)
-	container.add_child(select_button)
-	
+
 	status_label = Label.new()
 	status_label.text = "No AnimationTree selected"
 	status_label.modulate = Color.YELLOW
@@ -179,11 +167,10 @@ func _add_tree_view_section(container: VBoxContainer) -> void:
 	container.add_child(tree_view)
 
 # New function to update clipboard status display
-func _update_clipboard_status(has_content: bool, node_type: String = "", source_tree_name: String = "") -> void:
+func _update_clipboard_status(has_content: bool, node_type: String = "", source_tree_name: String = "", node_name: String = "") -> void:
 	if has_content:
-		clipboard_status_label.text = "Copied: %s from '%s'" % [node_type, source_tree_name]
+		clipboard_status_label.text = "Copied: %s (%s) from '%s'" % [node_name, node_type, source_tree_name]
 		clipboard_status_label.modulate = Color.GREEN
-		# Enable paste button if we have content and a valid target
 		if selected_animation_tree:
 			paste_button.disabled = false
 	else:
@@ -229,7 +216,7 @@ func _set_animation_tree(tree: AnimationTree) -> void:
 	if not _validate_animation_tree(tree):
 		return
 	
-	_set_success_status("AnimationTree: %s ✓" % tree.name, Color.GREEN)
+	_set_success_status("%s ✓" % tree.name, Color.GREEN)
 	_enable_controls(true)
 	_refresh_tree_view()
 	
@@ -258,7 +245,6 @@ func _set_error_status(message: String, color: Color) -> void:
 func _enable_controls(enabled: bool) -> void:
 	copy_button.disabled = not enabled
 	delete_button.disabled = not enabled
-	refresh_button.disabled = not enabled
 	
 	# Paste button depends on both tree selection AND clipboard content
 	# This will be properly managed by the plugin

@@ -80,7 +80,7 @@ func _on_copy_requested(animation_tree: AnimationTree, node_path: String) -> voi
 	
 	# Update dock to show clipboard status with validation
 	if is_instance_valid(dock):
-		dock._update_clipboard_status(true, node.get_class(), animation_tree.name)
+		dock._update_clipboard_status(true, node.get_class(), animation_tree.name, copied_node.resource_name if not copied_node.resource_name.is_empty() else _get_node_name_from_path(node_path))
 	
 	debug_print("Copied node: " + node.get_class() + " from path: " + node_path + " (from tree: " + animation_tree.name + ")")
 
@@ -136,6 +136,7 @@ func _on_paste_requested(animation_tree: AnimationTree, target_path: String) -> 
 	
 	debug_print("Pasted node: " + clipboard_data.node_type + " to path: " + target_path + 
 		  " (to tree: " + animation_tree.name + ")" + source_info)
+	EditorInterface.mark_scene_as_unsaved()
 
 func _update_dock_tree_safely() -> void:
 	# Ensure dock is still valid and has parent
@@ -191,6 +192,7 @@ func _on_delete_requested(animation_tree: AnimationTree, node_path: String) -> v
 				call_deferred("_update_dock_tree_safely")
 		
 		debug_print("Deleted node: " + node.get_class() + " from path: " + node_path)
+		EditorInterface.mark_scene_as_unsaved()
 
 # Helper function to get clipboard status
 func get_clipboard_status() -> Dictionary:
