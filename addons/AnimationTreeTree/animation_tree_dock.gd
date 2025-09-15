@@ -613,7 +613,7 @@ func _path_to_variable_name(path: String) -> String:
 	if var_name[0].is_valid_int():
 		var_name = "sm_" + var_name
 	
-	return var_name + "_playback"
+	return var_name
 
 func _generate_onready_variables(state_machines: Array[Dictionary]) -> String:
 	var code: String = "# Generated AnimationNodeStateMachinePlayback variables\n"
