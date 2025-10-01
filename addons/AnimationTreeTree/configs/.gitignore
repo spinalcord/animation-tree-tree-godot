@@ -1,0 +1,4 @@
+# Ignore all config files
+*.cfg
+# Ignore environment files
+*.env

@@ -1,0 +1,299 @@
+> [!IMPORTANT] Godot 4 Changes
+> - `instance()` → `instantiate()`
+> - `yield` → `await`
+> - `setget` → `set/get` properties
+> - New Node-Typs (CharacterBody2D statt KinematicBody2D)
+
+## Current version
+
+#### Typed Arrays
+
+```gdscript
+# Type inference with :=
+var inferred_type_array := [1.0, 2.0, 3.0] # Array[float]
+var typed_array: Array[int] = [1, 2, 3]
+var node_array: Array[Node] = []
+```
+
+#### Typed Dictionaries
+
+```gdscript
+# New - Typed dictionaries with better Inspector support
+var typed_dict: Dictionary[String, int] = {"health": 100, "mana": 50}
+```
+
+#### Variable Declaration
+
+```gdscript
+# Basic variables
+var a = 5
+var typed_var: int = 42
+var inferred := "String"
+
+# Static variables
+static var shared_value = 10
+```
+
+
+> [!ERROR] 
+> Reserved names must not be used as variable names!
+> Absolutely prohibited: `var class_name...`
+
+
+### Funktionen und Lambda Expressions
+
+#### Standard Functions
+
+```gdscript
+func my_function(param1: int, param2: String) -> bool:
+	return param1 > 0
+
+# One-liner functions
+func square(x: int) -> int: return x * x
+```
+
+#### Lambda Functions (First-class functions)
+
+```gdscript
+# Anonymous functions
+var lambda = func(x): return x * 2
+var result = lambda.call(5) # Result: 10
+
+# Named lambdas for debugging
+var named_lambda = func multiply_by_three(x): return x * 3
+
+# Using with array operations
+var arr = [1, 2, 3, 4]
+arr.sort_custom(func(a, b): return a > b)
+```
+
+#### Static Functions
+
+```gdscript
+static func utility_function(value: int) -> int:
+	return value * 2
+```
+
+### Properties (Getters/Setters)
+
+#### Inline Properties
+
+```gdscript
+var health: int = 100:
+	set(value):
+		health = max(0, value)
+		health_changed.emit(health)
+	get:
+		return health
+```
+
+### Signals and Async Programming
+
+#### Signal Definition
+
+```gdscript
+# Basic signal
+signal health_changed
+
+# Signal with parameters
+signal player_died(player_name: String, cause: String)
+```
+
+#### Await Keyword (Coroutines)
+
+```gdscript
+func wait_for_input():
+	print("Waiting for button press...")
+	await $Button.button_up
+	print("Button was pressed!")
+
+func async_operation():
+	var result = await some_async_function()
+	return result
+```
+
+### Enums und Constants
+
+#### Enums
+
+```gdscript
+enum State {IDLE, RUNNING, JUMPING}
+enum Named {FIRST = 1, SECOND = 5, THIRD}
+
+# Access with State.IDLE
+```
+
+#### Constants
+
+```gdscript
+const MAX_HEALTH = 100
+const GRAVITY: float = 9.8
+const ITEMS = ["sword", "shield", "potion"]
+```
+
+### Match Statements (Pattern Matching)
+
+```gdscript
+match player_state:
+	State.IDLE:
+		handle_idle()
+	State.RUNNING, State.JUMPING:
+		handle_movement()
+	var other_state when other_state > 10:
+		handle_special_case()
+	_:
+		handle_default()
+```
+
+### Classes und Inheritance
+
+#### Class Definition
+
+```gdscript
+@icon("res://icons/player.svg")
+class_name Player
+extends CharacterBody2D
+
+# Static constructor
+static func _static_init():
+	print("Class loaded")
+
+# Instance constructor
+func _init(player_name: String):
+	name = player_name
+```
+
+#### Inner Classes
+
+```gdscript
+class Inventory:
+	var items: Array[String] = []
+	
+	func add_item(item: String):
+		items.append(item)
+```
+
+### Annotations
+
+#### Very often used annotations
+
+```gdscript
+@tool # Script runs in editor
+@export var health: int = 100
+@export_range(0, 100) var speed: float = 50.0
+@onready var sprite = $Sprite2D
+@static_unload # Allow script unloading
+```
+
+### Enhanced Type System
+
+#### Array Type Safety
+
+```gdscript
+var nodes: Array[Node] = []
+var sprites: Array[Sprite2D] = []
+
+# Type checking at runtime
+if node is Sprite2D:
+	sprites.append(node)
+```
+
+#### Dictionary Type Safety 
+
+```gdscript
+var player_stats: Dictionary[String, int] = {
+	"health": 100,
+	"mana": 50,
+	"strength": 15
+}
+```
+
+## Advanced Features
+
+### Custom Callable Objects
+
+```gdscript
+var custom_callable = func(x, y): return x + y
+var bound_callable = custom_callable.bind(5) # Partially applied function
+
+# Using with signal connections
+signal_name.connect(custom_callable)
+```
+
+## Best Practices
+
+### Code Organization
+
+```gdscript
+# Use clear type hints
+func process_player_data(player: Player) -> Dictionary[String, Variant]:
+	var data = {}
+	# Process data
+	return data
+
+# Use meaningful variable names
+var player_health: int = 100
+var is_game_paused: bool = false
+```
+
+### Code Regions
+
+```gdscript
+#region Player Movement
+func move_left():
+	pass
+
+func move_right():
+	pass
+#endregion
+```
+
+### Documentation Comments
+
+```gdscript
+## This is a documentation comment
+## It appears in the script documentation
+## @param player_name: The name of the player
+## @return: True if successful
+func create_player(player_name: String) -> bool:
+	return true
+```
+
+### Error Handling
+
+```gdscript
+func safe_file_operation(path: String) -> bool:
+	if not FileAccess.file_exists(path):
+		push_error("File not found: " + path)
+		return false
+	
+	var file = FileAccess.open(path, FileAccess.READ)
+	if not file:
+		push_error("Could not open file: " + path)
+		return false
+	
+	# Process file
+	file.close()
+	return true
+```
+
+```gdscript
+func safe_file_operation(path: String) -> bool:
+	assert(FileAccess.file_exists(path), "File not found") # Very usefull if something must be provided.
+	...
+```
+### Signal Usage
+
+```gdscript
+# Clear signal names with descriptive parameters
+signal player_health_changed(old_health: int, new_health: int)
+signal item_collected(item_name: String, player: Player)
+
+# Connect signals with proper cleanup
+func _ready():
+	player.health_changed.connect(_on_player_health_changed)
+
+func _exit_tree():
+	if player.health_changed.is_connected(_on_player_health_changed):
+		player.health_changed.disconnect(_on_player_health_changed)
+```
