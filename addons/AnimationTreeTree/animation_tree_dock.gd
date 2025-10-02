@@ -134,6 +134,9 @@ func _create_ui() -> void:
 	add_child(components.main_container)
 
 func _get_animation_player() -> AnimationPlayer:
+	if selected_animation_tree == null:
+		return null
+	
 	var anim_player_path = selected_animation_tree.anim_player
 	if selected_animation_tree.anim_player != NodePath():
 		return selected_animation_tree.get_node(selected_animation_tree.anim_player) as AnimationPlayer

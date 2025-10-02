@@ -22,9 +22,19 @@ var _get_animations_callback: Callable
 var _get_script_callback: Callable
 var _refresh_callback: Callable
 var _export_manager: ExportManager
+var _experts: Dictionary = {}
+
 
 func _init(feedback_dialog: FeedbackDialog) -> void:
 	self.feedback = feedback_dialog
+	_register_experts()
+
+func _register_experts() -> void:
+	var fsm_expert = FSMExpert.new(self)
+	var script_expert = ScriptGeneratorExpert.new(self)
+	
+	_experts[fsm_expert.name] = fsm_expert
+	_experts[script_expert.name] = script_expert
 
 func execute_ai_action(
 	animation_tree: AnimationTree,
@@ -42,6 +52,10 @@ func execute_ai_action(
 	_get_script_callback = get_script_callback
 	_refresh_callback = refresh_callback
 	_export_manager = export_manager
+		
+	if _animation_tree == null:
+		await feedback.show_info("No AnimationTree selected", "No AnimationTree selected")
+		return ""
 	
 	var selected_blueprint: String = _export_manager.export_tree_as_yaml(_animation_tree, _selected_paths)
 	var prompt_dialog = _create_prompt_dialog()
@@ -67,8 +81,14 @@ func execute_ai_action(
 	if _get_script_callback.call().strip_edges().is_empty() or include_excerpt == false:
 		script_content = "No excerpt provided"
 	
+	var expert: Expert = _experts.get(expert_type)
+	if expert == null:
+		TreeDebug.msg("Expert not found: " + expert_type)
+		return ""
+	
+	var system_prompt_path = expert.get_system_prompt_path()
 	var system_prompt = _build_system_prompt(
-		expert_type,
+		system_prompt_path,
 		_target_path,
 		_get_animations_callback.call(),
 		script_content,
@@ -77,14 +97,12 @@ func execute_ai_action(
 		selected_blueprint
 	)
 	
-	if expert_type == FSM_EXPERT:
-		await _process_fsm_expert(con_ai, system_prompt, user_input)
-	elif expert_type == SCRIPT_EXPERT:
-		await _process_script_expert(con_ai, system_prompt, user_input)
+	await expert.process(con_ai, system_prompt, user_input)
 	return ""
 	
 func _create_prompt_dialog() -> ConfigDialog:
 	var prompt_fields: Array[ConfigField] = []
+
 	
 	prompt_fields.append(ConfigField.new(
 		"prompt", 
@@ -95,34 +113,14 @@ func _create_prompt_dialog() -> ConfigDialog:
 		""
 	))
 	
-	prompt_fields.append(ConfigField.new(
-		"node_type", 
-		"Allowed Node Types", 
-		"Select which node types should the expert included/excluded", 
-		"State Machine Expert", 
-		"decision", 
-		{
-			"StateMachine": true,
-			"BlendTree": true,
-			"Animation": true,
-			"Blend2": true,
-			"Blend3": true,
-			"BlendSpace1D": true,
-			"BlendSpace2D": true,
-			"TimeScale": true,
-			"TimeSeek": true,
-			"Transition": true
-		}
-	))
+	for expert in _experts.values():
+		var expert_fields = expert.get_config_fields()
+		for field in expert_fields:
+			prompt_fields.append(field)
 	
-	prompt_fields.append(ConfigField.new(
-		"include_excerpt", 
-		"Include Expression Excerpt", 
-		"Includes an excerpt (Only booleans) of your \"Advance Expression Base Node\" attached script assigned to your AnimationTree.", 
-		"State Machine Expert", 
-		"bool", 
-		true
-	))
+	var expert_names: Array[String] = []
+	for expert_name in _experts.keys():
+		expert_names.append(expert_name)
 	
 	prompt_fields.append(ConfigField.new(
 		"expert", 
@@ -130,7 +128,7 @@ func _create_prompt_dialog() -> ConfigDialog:
 		"Based on the expert you have chosen, you get an appropriate result.", 
 		"General", 
 		"combo_box", 
-		[FSM_EXPERT, SCRIPT_EXPERT]
+		expert_names
 	))
 	
 	var warnings: String = ""
@@ -151,11 +149,10 @@ func _create_prompt_dialog() -> ConfigDialog:
 	        "warning"
 		))
 	
-	
 	return ConfigDialog.new("prompt.cfg", prompt_fields)
 
 func _build_system_prompt(
-	expert_type: String,
+	system_prompt_path: String,
 	target_path: String,
 	avaible_animations: String,
 	script_content: String,
@@ -163,12 +160,6 @@ func _build_system_prompt(
 	boilerplate: String,
 	blueprint: String
 ) -> String:
-	var system_prompt_path = ""
-	if expert_type == FSM_EXPERT:
-		system_prompt_path = "ai/agents/system_prompts/fsm_expert.txt"
-	elif expert_type == SCRIPT_EXPERT:
-		system_prompt_path = "ai/agents/system_prompts/script_generator_expert.txt"
-	
 	var systemprompt = _read_file(system_prompt_path)
 	
 	systemprompt = systemprompt.replace("{{script_excerpt}}", script_content)
@@ -179,55 +170,6 @@ func _build_system_prompt(
 	systemprompt = systemprompt.replace("{{blueprint}}", blueprint)
 	
 	return systemprompt
-
-func _process_fsm_expert(
-	con_ai: ConAI,
-	system_prompt: String,
-	user_input: String
-) -> void:
-	var fsm_agent: Agent = Agent.new()
-	fsm_agent.system_prompt = system_prompt
-	
-	var temp_conversation: Conversation = Conversation.new()
-	var sample_tools = SampleTools.new()
-	
-	await con_ai.answer(fsm_agent, temp_conversation, sample_tools, user_input)
-	var llm_result = temp_conversation.get_last_message("assistant")
-	var all_produced_yaml: Array = _extract_block_from_markdown(llm_result, "yaml")
-	
-	if all_produced_yaml.size() > 0:
-		var first_yaml: String = all_produced_yaml[0]
-		var builder: AnimationTreeScriptBuilder = AnimationTreeScriptBuilder.new()
-		builder.build_from_script(_animation_tree, first_yaml)
-		_refresh_callback.call()
-		EditorInterface.mark_scene_as_unsaved()
-
-func _process_script_expert(
-	con_ai: ConAI,
-	system_prompt: String,
-	user_input: String
-) -> void:
-	var script_agent: Agent = Agent.new()
-	var script_expert_tools = ScriptExpertTools.new()
-	
-	script_agent.system_prompt = system_prompt
-	
-	var temp_conversation: Conversation = Conversation.new()
-	await con_ai.answer(script_agent, temp_conversation, script_expert_tools, user_input)
-	var llm_result = temp_conversation.get_last_message("assistant")
-	
-	TreeDebug.msg("LLM Result: " + str(llm_result))
-	
-	var all_produced_gdscripts: Array = _extract_block_from_markdown(llm_result, "gdscript")
-	
-	TreeDebug.msg("Extracted GDScript blocks: " + str(all_produced_gdscripts.size()))
-	
-	if all_produced_gdscripts.size() > 0:
-		var first_gdscript: String = all_produced_gdscripts[0]
-		await feedback.show_text("Script suggestion", "Script suggestion", first_gdscript, true)
-	else:
-		if llm_result.strip_edges().is_empty() == false:
-			await feedback.show_text("Script suggestion", "Raw AI Response", llm_result, true)
 
 func _read_file(relativ_file_path: String) -> String:
 	var script_path = ""
