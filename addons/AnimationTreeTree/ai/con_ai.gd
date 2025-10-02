@@ -328,7 +328,7 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 		if parse_result == OK and error_json.data != null:
 			failed_string += "JSON Error==========\n" + str(error_json) + "\n"
 		else:
-			failed_string += "\nCould not parse error response"
+			failed_string += "\nCould not parse error response\n"
 			
 		if !(error_json.data != null):
 			failed_string += "POST===========\n" + "POST response was null, is the server running?" + "\n"

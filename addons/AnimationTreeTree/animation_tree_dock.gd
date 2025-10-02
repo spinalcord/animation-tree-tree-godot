@@ -174,6 +174,10 @@ func _shorten_script(content: String) -> String:
 
 
 func get_avaible_animations() -> String:
+	if _get_animation_player() == null:
+		await feedback.show_info("Your AnimationTree has no AnimationPlayer. Your AnimationTree needs an AnimationPlayer.", "AnimationPlayer missing")
+		return ""
+	
 	var animations = _get_animation_player().get_animation_list()
 
 	var filtered = []

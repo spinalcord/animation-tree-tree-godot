@@ -170,6 +170,11 @@ func _create_field_control(field: ConfigField, parent: VBoxContainer) -> void:
 		_create_callable_field(field, parent)
 		return
 	
+	# Skip callout type in the field creation
+	if field.field_type == "callout":
+		_create_callout_field(field, parent)
+		return
+	
 	# Create horizontal container for label and control
 	var hbox = HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -363,9 +368,47 @@ func _create_callable_field(field: ConfigField, parent: VBoxContainer) -> void:
 	
 	parent.add_child(button)
 
+func _create_callout_field(field: ConfigField, parent: VBoxContainer) -> void:
+	var panel = PanelContainer.new()
+	
+	# Create StyleBox for background color
+	var style_box = StyleBoxFlat.new()
+	style_box.content_margin_left = 10
+	style_box.content_margin_right = 10
+	style_box.content_margin_top = 10
+	style_box.content_margin_bottom = 10
+	style_box.corner_radius_top_left = 5
+	style_box.corner_radius_top_right = 5
+	style_box.corner_radius_bottom_left = 5
+	style_box.corner_radius_bottom_right = 5
+	
+	# Set color based on type
+	match field.default_value:
+		"warning":
+			style_box.bg_color = Color(1.0, 0.6, 0.2, 0.3)  # Orange
+		"important":
+			style_box.bg_color = Color(0.2, 0.8, 0.2, 0.3)  # Green
+		"error":
+			style_box.bg_color = Color(1.0, 0.2, 0.2, 0.3)  # Red
+		"note":
+			style_box.bg_color = Color(0.5, 0.7, 1.0, 0.3)  # Baby blue
+		_:
+			style_box.bg_color = Color(0.5, 0.5, 0.5, 0.3)  # Default gray
+	
+	panel.add_theme_stylebox_override("panel", style_box)
+	
+	var label = Label.new()
+	label.text = field.label_text
+	label.tooltip_text = field.description
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	panel.add_child(label)
+	parent.add_child(panel)
+
 func _save_values_from_controls() -> void:
 	for field in fields:
-		if field.field_type == "callable":
+		if field.field_type == "callable" or field.field_type == "callout":
 			continue
 		
 		if not controls_map.has(field.key):

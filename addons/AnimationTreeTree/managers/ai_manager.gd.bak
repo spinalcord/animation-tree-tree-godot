@@ -15,14 +15,6 @@ var feedback: FeedbackDialog
 const FSM_EXPERT = "State Machine Generator Expert"
 const SCRIPT_EXPERT = "Script Generator Expert"
 
-var _animation_tree: AnimationTree
-var _target_path: String
-var _selected_paths: Array[String]
-var _get_animations_callback: Callable
-var _get_script_callback: Callable
-var _refresh_callback: Callable
-var _export_manager: ExportManager
-
 func _init(feedback_dialog: FeedbackDialog) -> void:
 	self.feedback = feedback_dialog
 
@@ -35,15 +27,7 @@ func execute_ai_action(
 	refresh_callback: Callable,
 	export_manager: ExportManager
 ) -> String:
-	_animation_tree = animation_tree
-	_target_path = target_path
-	_selected_paths = selected_paths
-	_get_animations_callback = get_animations_callback
-	_get_script_callback = get_script_callback
-	_refresh_callback = refresh_callback
-	_export_manager = export_manager
-	
-	var selected_blueprint: String = _export_manager.export_tree_as_yaml(_animation_tree, _selected_paths)
+	var selected_blueprint: String = export_manager.export_tree_as_yaml(animation_tree, selected_paths)
 	var prompt_dialog = _create_prompt_dialog()
 	var apply = await prompt_dialog.show()
 	
@@ -58,19 +42,19 @@ func execute_ai_action(
 	var expert_type = prompt_dialog.get_value("expert")
 	var user_input: String = prompt_dialog.get_value("prompt")
 	var include_excerpt: bool = prompt_dialog.get_value("include_excerpt")
-	var boilerplat: String = _export_manager.generate_animation_tree_boilerplate(_animation_tree, _selected_paths)
-	var script_content: String = _get_script_callback.call()
+	var boilerplat: String = export_manager.generate_animation_tree_boilerplate(animation_tree, selected_paths)
+	var script_content: String = get_script_callback.call()
 	
 	if user_input.is_empty():
 		return ""
 	
-	if _get_script_callback.call().strip_edges().is_empty() or include_excerpt == false:
+	if get_script_callback.call().strip_edges().is_empty() or include_excerpt == false:
 		script_content = "No excerpt provided"
 	
 	var system_prompt = _build_system_prompt(
 		expert_type,
-		_target_path,
-		_get_animations_callback.call(),
+		target_path,
+		get_animations_callback.call(),
 		script_content,
 		avaible_types,
 		boilerplat,
@@ -80,7 +64,7 @@ func execute_ai_action(
 	
 	
 	if expert_type == FSM_EXPERT:
-		await _process_fsm_expert(con_ai, system_prompt, user_input)
+		await _process_fsm_expert(con_ai, system_prompt, user_input, animation_tree, refresh_callback)
 	elif expert_type == SCRIPT_EXPERT:
 		await _process_script_expert(con_ai, system_prompt, user_input)
 	return ""
@@ -135,25 +119,6 @@ func _create_prompt_dialog() -> ConfigDialog:
 		[FSM_EXPERT, SCRIPT_EXPERT]
 	))
 	
-	var warnings: String = ""
-	
-	if (_get_animations_callback.call() as String).strip_edges().is_empty():
-		warnings += "- Your AnimationPlayer has no animations!\n"
-
-	if _get_script_callback.call().strip_edges().is_empty():
-		warnings += "- Your ExpressionBaseNodeScript has no boolean types, therefore some experts are going to assume expressions."
-	
-	if warnings.is_empty() == false:
-		prompt_fields.append(ConfigField.new(
-			"prompt_warnings", 
-			warnings, 
-			"Beaware you have some warnings", 
-			"General", 
-			"callout", 
-	        "warning"
-		))
-	
-	
 	return ConfigDialog.new("prompt.cfg", prompt_fields)
 
 func _build_system_prompt(
@@ -185,7 +150,9 @@ func _build_system_prompt(
 func _process_fsm_expert(
 	con_ai: ConAI,
 	system_prompt: String,
-	user_input: String
+	user_input: String,
+	animation_tree: AnimationTree,
+	refresh_callback: Callable
 ) -> void:
 	var fsm_agent: Agent = Agent.new()
 	fsm_agent.system_prompt = system_prompt
@@ -200,8 +167,8 @@ func _process_fsm_expert(
 	if all_produced_yaml.size() > 0:
 		var first_yaml: String = all_produced_yaml[0]
 		var builder: AnimationTreeScriptBuilder = AnimationTreeScriptBuilder.new()
-		builder.build_from_script(_animation_tree, first_yaml)
-		_refresh_callback.call()
+		builder.build_from_script(animation_tree, first_yaml)
+		refresh_callback.call()
 		EditorInterface.mark_scene_as_unsaved()
 
 func _process_script_expert(
