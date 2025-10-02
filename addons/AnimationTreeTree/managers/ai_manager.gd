@@ -77,8 +77,6 @@ func execute_ai_action(
 		selected_blueprint
 	)
 	
-	
-	
 	if expert_type == FSM_EXPERT:
 		await _process_fsm_expert(con_ai, system_prompt, user_input)
 	elif expert_type == SCRIPT_EXPERT:

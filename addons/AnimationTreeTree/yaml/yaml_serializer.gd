@@ -64,7 +64,6 @@ func to_text(value: Variant, options: SerializeOptions = null) -> String:
 ## Serialize to file
 func to_file(value: Variant, file_path: String, options: SerializeOptions = null) -> bool:
 	var yaml_content = to_text(value, options)
-	
 	var file = FileAccess.open(file_path, FileAccess.WRITE)
 	if not file:
 		push_error("Could not write to file: " + file_path)

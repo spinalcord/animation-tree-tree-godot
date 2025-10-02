@@ -444,10 +444,7 @@ func _on_boilerplate_pressed() -> void:
 		TreeDebug.msg("No AnimationTree selected")
 		return
 	
-	if node_paths.is_empty():
-		TreeDebug.msg("No nodes selected, generating boilerplate for entire tree")
-	else:
-		var boilerplate = await feedback.show_text("This is test info", "Info Test",export_manager.generate_animation_tree_boilerplate(selected_animation_tree, node_paths), true)
+	var boilerplate = await feedback.show_text("Boilerplate", "Boilerplate of selected nodes",export_manager.generate_animation_tree_boilerplate(selected_animation_tree, node_paths), true)
 
 func _get_selected_node_paths() -> Array[String]:
 	var selected_items = SelectionUtils.get_selected_items(tree_view)

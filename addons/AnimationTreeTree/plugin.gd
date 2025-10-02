@@ -21,12 +21,18 @@ static var config_name: String = ".env"
 static var config_path: String
 static var config_path_with_filename: String
 static var plugin_path: String
+static var ai_path: String
+static var ai_system_prompt_path: String
+static var ai_tools_path: String
 static var plugin_config: ConfigFile = ConfigFile.new()
 
 
 func _enter_tree() -> void:
 	config_path =  get_script().resource_path.get_base_dir() + "/configs/" 
 	plugin_path =  get_script().resource_path.get_base_dir() + "/" 
+	ai_path =  plugin_path + "ai/"
+	ai_system_prompt_path = ai_path + "agents/system_prompts/"
+	ai_tools_path = ai_path + "agents/tools/"
 	config_path_with_filename = config_path + config_name
 	
 	# Initialize managers
