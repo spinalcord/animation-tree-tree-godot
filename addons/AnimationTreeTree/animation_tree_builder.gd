@@ -212,12 +212,18 @@ func delete_node(node_path: String) -> bool:
 		TreeDebug.msg("Invalid AnimationTree", true)
 		return false
 	
+
+	
 	var parent_path = NodeUtils.get_parent_path(node_path)
 	var parent = _get_node_at_path(parent_path)
 	var node_name = NodeUtils.get_node_name_from_path(node_path)
 	
 	if not is_instance_valid(parent):
 		TreeDebug.msg("Parent not found: " + parent_path, true)
+		return false
+
+	if parent is AnimationNodeBlendSpace1D or AnimationNodeBlendSpace2D:
+		push_error("You cannot delete Blendspace1D/Blendspace2D points with AnimationTreeTree-Addon. You have to do it manually in the AnimationTree-Viewport.")
 		return false
 	
 	if parent is AnimationNodeStateMachine:
@@ -242,7 +248,7 @@ func delete_node(node_path: String) -> bool:
 		TreeDebug.msg("Deleted node: " + node_path)
 		return true
 	
-	TreeDebug.msg("Cannot delete node from this container", true)
+	push_error("Cannot delete node from this container", true)
 	return false
 
 # Delete multiple nodes
@@ -651,6 +657,10 @@ func _add_to_container(parent: AnimationNode, node: AnimationNode, name: String,
 		_emit_changed(bt)
 		return true
 	elif parent is AnimationNodeBlendSpace1D:
+		if not name.is_valid_int():
+			push_error("BlendSpace children must have numeric names, got: " + name, true)
+			return false
+		
 		var bs1d = parent as AnimationNodeBlendSpace1D
 		var pos_1d: float = 0.0
 		if blend_position is float or blend_position is int:
@@ -661,6 +671,10 @@ func _add_to_container(parent: AnimationNode, node: AnimationNode, name: String,
 		_emit_changed(bs1d)
 		return true
 	elif parent is AnimationNodeBlendSpace2D:
+		if not name.is_valid_int():
+			push_error("BlendSpace children must have numeric names, got: " + name, true)
+			return false
+		
 		var bs2d = parent as AnimationNodeBlendSpace2D
 		var pos_2d: Vector2 = Vector2.ZERO
 		if blend_position is Vector2:
@@ -670,7 +684,8 @@ func _add_to_container(parent: AnimationNode, node: AnimationNode, name: String,
 		bs2d.add_blend_point(node, pos_2d)
 		_emit_changed(bs2d)
 		return true
-	
+
+		
 	return false
 
 func _ensure_unique_name_state(sm: AnimationNodeStateMachine, base_name: String) -> String:

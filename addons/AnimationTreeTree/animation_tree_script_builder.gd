@@ -263,6 +263,11 @@ func _build_node(parent_path: String, node_data: Dictionary, parent_node: Animat
 	if not properties.is_empty():
 		config["properties"] = properties
 	
+	if parent_is_blendspace:
+		if not node_name.is_valid_int():
+			_add_error("BlendSpace children must have numeric names, got: " + node_name)
+			return false
+	
 	# Create the node
 	if not _builder.add_node(parent_path, config):
 		_add_error("Failed to create node: " + node_name)

@@ -24,7 +24,7 @@ static func msg(content: String, display_as_msg_box: bool = false):
 	
 	if display_as_msg_box == true:
 		var _feedback: FeedbackDialog = FeedbackDialog.new()
-		_feedback.show_info(content, "AnimationTreeTree")
+		await _feedback.show_info(content, "AnimationTreeTree")
 		return
 	
 	if not AnimationTreeTree.plugin_config.get_value("settings", "debug_everything", false):

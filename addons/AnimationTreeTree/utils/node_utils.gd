@@ -46,6 +46,7 @@ static func get_blend_tree_node(blend_tree: AnimationNodeBlendTree, node_name: S
 	return blend_tree.get_node(node_name)
 
 # Get node at a specific path from root using native methods
+# Get node at a specific path from root using native methods
 static func get_node_at_path(root: AnimationNode, path: String) -> AnimationNode:
 	if not is_instance_valid(root):
 		return null
@@ -72,6 +73,18 @@ static func get_node_at_path(root: AnimationNode, path: String) -> AnimationNode
 		elif current is AnimationNodeBlendTree:
 			# For BlendTree, try to get node (returns null if not found)
 			next_node = current.get_node(part)
+		elif current is AnimationNodeBlendSpace1D:
+			# For BlendSpace1D, part is the blend point index
+			var index = int(part)
+			if index < 0 or index >= current.get_blend_point_count():
+				return null
+			next_node = current.get_blend_point_node(index)
+		elif current is AnimationNodeBlendSpace2D:
+			# For BlendSpace2D, part is the blend point index
+			var index = int(part)
+			if index < 0 or index >= current.get_blend_point_count():
+				return null
+			next_node = current.get_blend_point_node(index)
 		else:
 			return null
 		
@@ -81,7 +94,6 @@ static func get_node_at_path(root: AnimationNode, path: String) -> AnimationNode
 		current = next_node
 	
 	return current
-
 # Get parent path from a node path (pure string manipulation)
 static func get_parent_path(path: String) -> String:
 	if not path.contains("/"):
