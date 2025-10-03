@@ -32,14 +32,20 @@ func copy_nodes(animation_tree: AnimationTree, node_paths: Array[String]) -> Dic
 			continue
 		
 		var original_position = _get_node_position(animation_tree.tree_root, node_path)
+		var blend_position = _get_blend_position(animation_tree.tree_root, node_path)
 		
-		copied_nodes.append({
+		var node_data = {
 			"node": copied_node,
 			"original_path": node_path,
 			"node_type": node.get_class(),
 			"node_name": _get_node_name(node_path),
 			"original_position": original_position
-		})
+		}
+		
+		if blend_position != null:
+			node_data["blend_position"] = blend_position
+		
+		copied_nodes.append(node_data)
 		node_types.append(node.get_class())
 	
 	if copied_nodes.is_empty():
@@ -86,12 +92,12 @@ func paste_nodes(animation_tree: AnimationTree, target_path: String) -> Dictiona
 	var nodes_data = clipboard_data.nodes as Array
 	var pasted_count = 0
 	
-	# Check if target is a container (StateMachine or BlendTree)
+	# Check if target is a container (StateMachine, BlendTree, or BlendSpace)
 	var paste_path = target_path
 	var target_node = builder.get_node(target_path)
 	
 	# If target is NOT a container, paste into its parent instead
-	if not (target_node is AnimationNodeStateMachine or target_node is AnimationNodeBlendTree):
+	if not (target_node is AnimationNodeStateMachine or target_node is AnimationNodeBlendTree or target_node is AnimationNodeBlendSpace1D or target_node is AnimationNodeBlendSpace2D):
 		paste_path = NodeUtils.get_parent_path(target_path)
 		target_node = builder.get_node(paste_path)
 	
@@ -105,9 +111,10 @@ func paste_nodes(animation_tree: AnimationTree, target_path: String) -> Dictiona
 		var node_data = nodes_data[i] as Dictionary
 		var position_to_use = base_position if i == 0 else base_position + node_data.get("relative_offset", Vector2.ZERO)
 		var original_name = node_data["node_name"]
+		var blend_position = node_data.get("blend_position", null)
 		
 		# Add node and get the actual used name
-		var actual_name = _add_node_with_unique_name(target_node, node_data["node"], original_name, position_to_use)
+		var actual_name = _add_node_with_unique_name(target_node, node_data["node"], original_name, position_to_use, blend_position)
 		
 		if not actual_name.is_empty():
 			name_mapping[original_name] = actual_name
@@ -221,7 +228,7 @@ func _copy_transition(trans: AnimationNodeStateMachineTransition) -> AnimationNo
 
 
 # Add node with unique name and return the actual name used
-func _add_node_with_unique_name(container: AnimationNode, node: AnimationNode, base_name: String, position: Vector2) -> String:
+func _add_node_with_unique_name(container: AnimationNode, node: AnimationNode, base_name: String, position: Vector2, blend_position = null) -> String:
 	if not is_instance_valid(container) or not is_instance_valid(node):
 		return ""
 	
@@ -261,6 +268,44 @@ func _add_node_with_unique_name(container: AnimationNode, node: AnimationNode, b
 		_emit_changed(bt)
 		return unique_name
 	
+	elif container is AnimationNodeBlendSpace1D:
+		var bs1d = container as AnimationNodeBlendSpace1D
+		
+		# BlendSpace children always use numeric index as name
+		unique_name = str(bs1d.get_blend_point_count())
+		
+		# Determine blend position
+		var pos_1d: float = 0.0
+		if blend_position != null:
+			if blend_position is float or blend_position is int:
+				pos_1d = float(blend_position)
+			elif blend_position is Vector2:
+				pos_1d = (blend_position as Vector2).x
+		
+		# Add blend point
+		bs1d.add_blend_point(node, pos_1d)
+		_emit_changed(bs1d)
+		return unique_name
+	
+	elif container is AnimationNodeBlendSpace2D:
+		var bs2d = container as AnimationNodeBlendSpace2D
+		
+		# BlendSpace children always use numeric index as name
+		unique_name = str(bs2d.get_blend_point_count())
+		
+		# Determine blend position
+		var pos_2d: Vector2 = Vector2.ZERO
+		if blend_position != null:
+			if blend_position is Vector2:
+				pos_2d = blend_position as Vector2
+			elif blend_position is float or blend_position is int:
+				pos_2d = Vector2(float(blend_position), 0.0)
+		
+		# Add blend point
+		bs2d.add_blend_point(node, pos_2d)
+		_emit_changed(bs2d)
+		return unique_name
+	
 	return ""
 
 
@@ -292,6 +337,12 @@ func _get_node_at_path(root: AnimationNode, path: String) -> AnimationNode:
 			current = current.get_node(part)
 		elif current is AnimationNodeBlendTree:
 			current = current.get_node(part)
+		elif current is AnimationNodeBlendSpace1D:
+			var index = int(part)
+			current = current.get_blend_point_node(index)
+		elif current is AnimationNodeBlendSpace2D:
+			var index = int(part)
+			current = current.get_blend_point_node(index)
 		if not is_instance_valid(current): return null
 	return current
 
@@ -310,6 +361,27 @@ func _get_node_position(root: AnimationNode, node_path: String) -> Vector2:
 	elif parent is AnimationNodeBlendTree:
 		return parent.get_node_position(node_name)
 	return Vector2.ZERO
+
+func _get_blend_position(root: AnimationNode, node_path: String):
+	var parent_path = node_path.substr(0, node_path.rfind("/")) if node_path.contains("/") else ""
+	var parent = _get_node_at_path(root, parent_path)
+	var node_name = _get_node_name(node_path)
+	
+	if parent is AnimationNodeBlendSpace1D:
+		var bs1d = parent as AnimationNodeBlendSpace1D
+		# Find the blend point index by name
+		for i in range(bs1d.get_blend_point_count()):
+			if str(i) == node_name:
+				return bs1d.get_blend_point_position(i)
+	
+	elif parent is AnimationNodeBlendSpace2D:
+		var bs2d = parent as AnimationNodeBlendSpace2D
+		# Find the blend point index by name
+		for i in range(bs2d.get_blend_point_count()):
+			if str(i) == node_name:
+				return bs2d.get_blend_point_position(i)
+	
+	return null
 
 
 func _calculate_relative_positions(copied_nodes: Array) -> void:
