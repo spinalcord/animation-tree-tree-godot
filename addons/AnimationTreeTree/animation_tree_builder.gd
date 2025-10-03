@@ -32,6 +32,7 @@ func _get_animation_player() -> AnimationPlayer:
 # ============================================================================
 
 # Add an existing node (for paste operations)
+# Add an existing node (for paste operations)
 func add_existing_node(parent_path: String, node: AnimationNode, node_name: String, position: Vector2 = Vector2.ZERO) -> bool:
 	if not _validate_tree():
 		TreeDebug.msg("Invalid AnimationTree", true)
@@ -53,6 +54,22 @@ func add_existing_node(parent_path: String, node: AnimationNode, node_name: Stri
 	TreeDebug.msg("Failed to add existing node", true)
 	return false
 
+# Get the last added blend point node from a BlendSpace
+func get_last_blend_point_node(parent_path: String) -> AnimationNode:
+	var parent = _get_node_at_path(parent_path)
+	
+	if parent is AnimationNodeBlendSpace1D:
+		var bs1d = parent as AnimationNodeBlendSpace1D
+		var count = bs1d.get_blend_point_count()
+		if count > 0:
+			return bs1d.get_blend_point_node(count - 1)
+	elif parent is AnimationNodeBlendSpace2D:
+		var bs2d = parent as AnimationNodeBlendSpace2D
+		var count = bs2d.get_blend_point_count()
+		if count > 0:
+			return bs2d.get_blend_point_node(count - 1)
+	
+	return null
 
 func add_node(parent_path: String, config: Dictionary) -> bool:
 	if not _validate_tree():
@@ -84,10 +101,25 @@ func add_node(parent_path: String, config: Dictionary) -> bool:
 				node.set(key, config["properties"][key])
 	
 	# Determine name and position
+	# Determine name and position
 	var final_name = config.get("name", _generate_name(node))
 	var final_position = config.get("position", _calculate_position(parent))
 	
-	if _add_to_container(parent, node, final_name, final_position):
+	# Extract blend_position for BlendSpace nodes
+	var blend_position = null
+	if config.has("properties") and config["properties"].has("blend_position"):
+		var bp = config["properties"]["blend_position"]
+		if bp is Dictionary:
+			if bp.has("x") and bp.has("y"):
+				blend_position = Vector2(bp["x"], bp["y"])
+			elif bp.has("x"):
+				blend_position = bp["x"]
+		elif bp is Vector2:
+			blend_position = bp
+		elif bp is float or bp is int:
+			blend_position = float(bp)
+	
+	if _add_to_container(parent, node, final_name, final_position, blend_position):
 		TreeDebug.msg("Added node: " + parent_path + "/" + final_name)
 		return true
 	
@@ -526,7 +558,7 @@ func _get_node_at_path(path: String) -> AnimationNode:
 	return NodeUtils.get_node_at_path(_tree.tree_root, path)
 
 func _can_add_to(node: AnimationNode) -> bool:
-	return is_instance_valid(node) and (node is AnimationNodeStateMachine or node is AnimationNodeBlendTree)
+	return is_instance_valid(node) and (node is AnimationNodeStateMachine or node is AnimationNodeBlendTree or node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D)
 
 func _create_node_instance(type: String) -> AnimationNode:
 	# Normalize type name - remove "AnimationNode" prefix if present
@@ -605,7 +637,7 @@ func _calculate_blend_position(bt: AnimationNodeBlendTree) -> Vector2:
 	
 	return Vector2(avg_x / node_names.size(), bottommost_y + 120)
 
-func _add_to_container(parent: AnimationNode, node: AnimationNode, name: String, position: Vector2) -> bool:
+func _add_to_container(parent: AnimationNode, node: AnimationNode, name: String, position: Vector2, blend_position = null) -> bool:
 	if parent is AnimationNodeStateMachine:
 		var sm = parent as AnimationNodeStateMachine
 		name = _ensure_unique_name_state(sm, name)
@@ -617,6 +649,26 @@ func _add_to_container(parent: AnimationNode, node: AnimationNode, name: String,
 		name = _ensure_unique_name_blend(bt, name)
 		bt.add_node(name, node, position)
 		_emit_changed(bt)
+		return true
+	elif parent is AnimationNodeBlendSpace1D:
+		var bs1d = parent as AnimationNodeBlendSpace1D
+		var pos_1d: float = 0.0
+		if blend_position is float or blend_position is int:
+			pos_1d = float(blend_position)
+		elif blend_position is Vector2:
+			pos_1d = (blend_position as Vector2).x
+		bs1d.add_blend_point(node, pos_1d)
+		_emit_changed(bs1d)
+		return true
+	elif parent is AnimationNodeBlendSpace2D:
+		var bs2d = parent as AnimationNodeBlendSpace2D
+		var pos_2d: Vector2 = Vector2.ZERO
+		if blend_position is Vector2:
+			pos_2d = blend_position as Vector2
+		elif blend_position is float or blend_position is int:
+			pos_2d = Vector2(float(blend_position), 0.0)
+		bs2d.add_blend_point(node, pos_2d)
+		_emit_changed(bs2d)
 		return true
 	
 	return false

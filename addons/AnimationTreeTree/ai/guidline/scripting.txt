@@ -2,7 +2,7 @@
 > - `instance()` → `instantiate()`
 > - `yield` → `await`
 > - `setget` → `set/get` properties
-> - New Node-Typs (CharacterBody2D statt KinematicBody2D)
+> - New Node-Typs (CharacterBody2D instead KinematicBody2D)
 
 ## Current version
 
@@ -40,7 +40,7 @@ static var shared_value = 10
 > Absolutely prohibited: `var class_name...`
 
 
-### Funktionen und Lambda Expressions
+### Functions and Lambda Expressions
 
 #### Standard Functions
 
@@ -237,7 +237,7 @@ var is_game_paused: bool = false
 ```
 
 ### Code Regions
-
+ 
 ```gdscript
 #region Player Movement
 func move_left():

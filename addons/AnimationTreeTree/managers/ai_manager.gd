@@ -86,7 +86,7 @@ func execute_ai_action(
 		TreeDebug.msg("Expert not found: " + expert_type)
 		return ""
 	
-	var system_prompt_path = expert.get_system_prompt_path()
+	var system_prompt_path = AnimationTreeTree.ai_system_prompt_path + expert.get_system_prompt()
 	var system_prompt = _build_system_prompt(
 		system_prompt_path,
 		_target_path,

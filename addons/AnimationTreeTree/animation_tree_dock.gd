@@ -235,6 +235,7 @@ func _on_ai_pressed():
 		export_manager
 	)
 	
+	
 
 func _ensure_gitignore_exists() -> void:
 	var gitignore_path = AnimationTreeTree.config_path + ".gitignore"
@@ -438,7 +439,6 @@ func _on_blueprint_pressed() -> void:
 		yaml_output = export_manager.export_tree_as_yaml(selected_animation_tree, [])
 	else:
 		yaml_output = export_manager.export_tree_as_yaml(selected_animation_tree, node_paths)
-	
 	await feedback.show_text("YAML Export", "Animation Tree YAML", yaml_output, true)
 
 func _on_boilerplate_pressed() -> void:

@@ -215,7 +215,8 @@ func get_errors() -> Array[String]:
 # BUILDING (modified for circular positioning)
 # ============================================================================
 
-func _build_node(parent_path: String, node_data: Dictionary) -> bool:
+
+func _build_node(parent_path: String, node_data: Dictionary, parent_node: AnimationNode = null) -> bool:
 	var node_name = node_data.get("name", "")
 	var node_type = node_data.get("type", "Animation")
 	var animation = node_data.get("animation", "")
@@ -242,11 +243,16 @@ func _build_node(parent_path: String, node_data: Dictionary) -> bool:
 		
 		TreeDebug.msg("Positioning " + node_name + " at index " + str(current_index) + "/" + str(total_siblings) + " -> " + str(position))
 	
+	# Check if parent is a BlendSpace
+	if parent_node == null:
+		parent_node = _builder.get_node(parent_path)
+	var parent_is_blendspace = parent_node is AnimationNodeBlendSpace1D or parent_node is AnimationNodeBlendSpace2D
+	
 	# Build node configuration
 	var config = {
 		"type": node_type,
 		"name": node_name,
-		"position": position  # Add calculated position
+		"position": position
 	}
 	
 	# Add animation if specified
@@ -259,23 +265,203 @@ func _build_node(parent_path: String, node_data: Dictionary) -> bool:
 	
 	# Create the node
 	if not _builder.add_node(parent_path, config):
-		_add_error("Failed to create node: " + node_name )
+		_add_error("Failed to create node: " + node_name)
 		return false
 	
-	# Build the full path for this node
-	var node_path = parent_path + "/" + node_name
+	# For BlendSpace parents, get direct reference to the added node
+	var created_node: AnimationNode = null
+	if parent_is_blendspace:
+		created_node = _builder.get_last_blend_point_node(parent_path)
+		if not is_instance_valid(created_node):
+			_add_error("Failed to get blend point node: " + node_name)
+			return false
 	
 	# Build child nodes recursively
 	for child_data in children:
-		if not _build_node(node_path, child_data):
-			return false
+		if parent_is_blendspace:
+			# Use direct node reference for BlendSpace children
+			if not _build_node_direct(created_node, child_data):
+				return false
+		else:
+			# Use path-based approach for normal containers
+			var node_path = parent_path + "/" + node_name
+			if not _build_node(node_path, child_data):
+				return false
 	
 	# Build transitions if this is a StateMachine
 	if (node_type == "StateMachine" or node_type == "AnimationNodeStateMachine") and not transitions.is_empty():
-		TreeDebug.msg("Building " + str(transitions.size()) + " transitions for " + node_path)
+		TreeDebug.msg("Building " + str(transitions.size()) + " transitions")
 		for transition_data in transitions:
-			if not _build_transition(node_path, transition_data):
+			if parent_is_blendspace:
+				if not _build_transition_direct(created_node, transition_data):
+					return false
+			else:
+				var node_path = parent_path + "/" + node_name
+				if not _build_transition(node_path, transition_data):
+					return false
+	
+	return true
+
+func _build_node_direct(parent_node: AnimationNode, node_data: Dictionary) -> bool:
+	var node_name = node_data.get("name", "")
+	var node_type = node_data.get("type", "Animation")
+	var animation = node_data.get("animation", "")
+	var children = node_data.get("children", [])
+	var transitions = node_data.get("transitions", [])
+	
+	# Extract additional properties
+	var properties = {}
+	for key in node_data:
+		if key not in ["name", "type", "animation", "children", "transitions", "path"]:
+			properties[key] = node_data[key]
+	
+	TreeDebug.msg("Building node direct: " + node_name + " (" + node_type + ")")
+	
+	# Create node instance
+	var node: AnimationNode = null
+	match node_type:
+		"Animation", "AnimationNodeAnimation":
+			node = AnimationNodeAnimation.new()
+			if not animation.is_empty():
+				node.animation = animation
+		"StateMachine", "AnimationNodeStateMachine":
+			node = AnimationNodeStateMachine.new()
+		"BlendTree", "AnimationNodeBlendTree":
+			node = AnimationNodeBlendTree.new()
+		"BlendSpace1D", "AnimationNodeBlendSpace1D":
+			node = AnimationNodeBlendSpace1D.new()
+		"BlendSpace2D", "AnimationNodeBlendSpace2D":
+			node = AnimationNodeBlendSpace2D.new()
+		"OneShot", "AnimationNodeOneShot":
+			node = AnimationNodeOneShot.new()
+		"Blend2", "AnimationNodeBlend2":
+			node = AnimationNodeBlend2.new()
+		"Blend3", "AnimationNodeBlend3":
+			node = AnimationNodeBlend3.new()
+		"TimeScale", "AnimationNodeTimeScale":
+			node = AnimationNodeTimeScale.new()
+		"TimeSeek", "AnimationNodeTimeSeek":
+			node = AnimationNodeTimeSeek.new()
+		"Transition", "AnimationNodeTransition":
+			node = AnimationNodeTransition.new()
+	
+	if not is_instance_valid(node):
+		_add_error("Failed to create node: " + node_name)
+		return false
+	
+	# Apply properties
+	if not properties.is_empty():
+		for key in properties:
+			if key in node and key != "blend_position":
+				node.set(key, properties[key])
+	
+	# Extract blend_position for BlendSpace parents
+	var blend_position = null
+	if properties.has("blend_position"):
+		var bp = properties["blend_position"]
+		if bp is Dictionary:
+			if bp.has("x") and bp.has("y"):
+				blend_position = Vector2(bp["x"], bp["y"])
+			elif bp.has("x"):
+				blend_position = bp["x"]
+		elif bp is Vector2:
+			blend_position = bp
+		elif bp is float or bp is int:
+			blend_position = float(bp)
+	
+	# Add node to parent
+	if parent_node is AnimationNodeStateMachine:
+		var sm = parent_node as AnimationNodeStateMachine
+		var pos = Vector2(100, 100)
+		sm.add_node(node_name, node, pos)
+	elif parent_node is AnimationNodeBlendTree:
+		var bt = parent_node as AnimationNodeBlendTree
+		var pos = Vector2(100, 100)
+		bt.add_node(node_name, node, pos)
+	elif parent_node is AnimationNodeBlendSpace1D:
+		var bs1d = parent_node as AnimationNodeBlendSpace1D
+		var pos_1d: float = 0.0
+		if blend_position is float or blend_position is int:
+			pos_1d = float(blend_position)
+		elif blend_position is Vector2:
+			pos_1d = (blend_position as Vector2).x
+		bs1d.add_blend_point(node, pos_1d)
+	elif parent_node is AnimationNodeBlendSpace2D:
+		var bs2d = parent_node as AnimationNodeBlendSpace2D
+		var pos_2d: Vector2 = Vector2.ZERO
+		if blend_position is Vector2:
+			pos_2d = blend_position as Vector2
+		elif blend_position is float or blend_position is int:
+			pos_2d = Vector2(float(blend_position), 0.0)
+		bs2d.add_blend_point(node, pos_2d)
+	else:
+		_add_error("Cannot add to parent node type")
+		return false
+	
+	# Build children recursively
+	for child_data in children:
+		if not _build_node_direct(node, child_data):
+			return false
+	
+	# Build transitions if StateMachine
+	if node is AnimationNodeStateMachine and not transitions.is_empty():
+		TreeDebug.msg("Building " + str(transitions.size()) + " transitions direct")
+		for transition_data in transitions:
+			if not _build_transition_direct(node, transition_data):
 				return false
+	
+	return true
+
+func _build_transition_direct(state_machine: AnimationNode, transition_data: Dictionary) -> bool:
+	if not state_machine is AnimationNodeStateMachine:
+		_add_error("Not a StateMachine")
+		return false
+	
+	var sm = state_machine as AnimationNodeStateMachine
+	var from_state = transition_data.get("from", "")
+	var to_state = transition_data.get("to", "")
+	
+	if from_state.is_empty() or to_state.is_empty():
+		_add_error("Transition missing 'from' or 'to' state")
+		return false
+	
+	TreeDebug.msg("Building transition direct: " + from_state + " -> " + to_state)
+	
+	var trans = AnimationNodeStateMachineTransition.new()
+	
+	if transition_data.has("switch_mode"):
+		match transition_data["switch_mode"]:
+			"immediate":
+				trans.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_IMMEDIATE
+			"sync":
+				trans.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_SYNC
+			"at_end":
+				trans.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END
+	else:
+		trans.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_IMMEDIATE
+	
+	if transition_data.has("advance_mode"):
+		if transition_data["advance_mode"] == true:
+			trans.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
+		else:
+			trans.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_ENABLED
+	else:
+		trans.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
+	
+	if transition_data.has("condition"):
+		trans.advance_condition = transition_data["condition"]
+	
+	if transition_data.has("expression"):
+		trans.advance_expression = transition_data["expression"]
+	
+	trans.xfade_time = transition_data.get("fade_time", 0.0)
+	trans.priority = transition_data.get("priority", 1)
+	trans.reset = transition_data.get("reset", true)
+	
+	if transition_data.has("curve"):
+		trans.xfade_curve = transition_data["curve"]
+	
+	sm.add_transition(from_state, to_state, trans)
 	
 	return true
 

@@ -28,8 +28,8 @@ func get_config_fields() -> Array[ConfigField]:
 	
 	return fields
 
-func get_system_prompt_path() -> String:
-	return "ai/agents/system_prompts/script_generator_expert.txt"
+func get_system_prompt() -> String:
+	return "script_generator_expert.txt"
 
 func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	var script_agent: Agent = Agent.new()

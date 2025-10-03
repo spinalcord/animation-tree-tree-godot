@@ -12,6 +12,8 @@
 # Utility functions for AnimationNode operations using native Godot 4.4 methods
 class_name NodeUtils
 
+
+
 # Get all child node names from a container using native methods
 static func get_container_children(container: AnimationNode) -> Array[String]:
 	var child_names: Array[String] = []

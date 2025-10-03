@@ -106,6 +106,38 @@ func _build_children_array(node: AnimationNode, path: String, transitions_by_pat
 				if not child_data.is_empty():
 					children.append(child_data)
 	
+	elif node is AnimationNodeBlendSpace1D:
+		var blend_space = node as AnimationNodeBlendSpace1D
+		var blend_point_count = blend_space.get_blend_point_count()
+		
+		for i in range(blend_point_count):
+			var point_node = blend_space.get_blend_point_node(i)
+			var point_position = blend_space.get_blend_point_position(i)
+			var child_path = PathUtils.build_child_path(path, str(i))
+			
+			if point_node:
+				var child_data = _build_tree_structure(point_node, child_path, transitions_by_path, selected_paths)
+				if not child_data.is_empty():
+					# Add blend position to child data
+					child_data["blend_position"] = point_position
+					children.append(child_data)
+	
+	elif node is AnimationNodeBlendSpace2D:
+		var blend_space = node as AnimationNodeBlendSpace2D
+		var blend_point_count = blend_space.get_blend_point_count()
+		
+		for i in range(blend_point_count):
+			var point_node = blend_space.get_blend_point_node(i)
+			var point_position = blend_space.get_blend_point_position(i)
+			var child_path = PathUtils.build_child_path(path, "%d" % i)
+			
+			if point_node:
+				var child_data = _build_tree_structure(point_node, child_path, transitions_by_path, selected_paths)
+				if not child_data.is_empty():
+					# Add blend position as x,y to child data
+					child_data["blend_position"] = {"x": point_position.x, "y": point_position.y}
+					children.append(child_data)
+	
 	return children
 
 func _build_transitions_array(transitions: Array) -> Array:
