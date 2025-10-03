@@ -60,11 +60,14 @@ func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	
 	await con_ai.answer(fsm_agent, temp_conversation, sample_tools, user_input)
 	var llm_result = temp_conversation.get_last_message("assistant")
-	var all_produced_yaml: Array = manager._extract_block_from_markdown(llm_result, "yaml")
+	var all_produced_yaml: Array = manager.extract_block_from_markdown(llm_result, "yaml")
+	
 	
 	if all_produced_yaml.size() > 0:
 		var first_yaml: String = all_produced_yaml[0]
 		var builder: AnimationTreeScriptBuilder = AnimationTreeScriptBuilder.new()
+		print(first_yaml)
+		
 		builder.build_from_script(manager._animation_tree, first_yaml)
 		manager._refresh_callback.call()
 		EditorInterface.mark_scene_as_unsaved()

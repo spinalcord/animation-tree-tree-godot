@@ -103,7 +103,7 @@ func _on_delete_requested(animation_tree: AnimationTree, node_paths: Array[Strin
 func _on_copy_requested(animation_tree: AnimationTree, node_paths: Array[String]) -> void:
 	var result = clipboard_manager.copy_nodes(animation_tree, node_paths)
 	if result.success and is_instance_valid(dock):
-		dock._update_clipboard_status(true, result.display_types, result.source_tree, result.first_node_name)
+		dock.update_clipboard_status(true, result.display_types, result.source_tree, result.first_node_name)
 
 # KEEP: ClipboardManager has specialized paste logic
 func _on_paste_requested(animation_tree: AnimationTree, target_path: String) -> void:

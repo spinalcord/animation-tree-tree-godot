@@ -171,16 +171,16 @@ func _build_system_prompt(
 	
 	return systemprompt
 
-func _read_file(relativ_file_path: String) -> String:
+func _read_file(file_path: String) -> String:
 	var script_path = ""
 	var stack = get_stack()
 	if stack.size() > 0:
 		script_path = stack[0].source
 	
-	var file = FileAccess.open(AnimationTreeTree.plugin_path + relativ_file_path, FileAccess.READ)
+	var file = FileAccess.open( file_path, FileAccess.READ)
 	
 	if file == null:
-		print("Error opening file: ", FileAccess.get_open_error())
+		print("Error reading file: ", FileAccess.get_open_error())
 		return ""
 	
 	var content = file.get_as_text()
@@ -188,7 +188,7 @@ func _read_file(relativ_file_path: String) -> String:
 	
 	return content
 
-func _extract_block_from_markdown(text: String, block_name: String) -> Array:
+func extract_block_from_markdown(text: String, block_name: String) -> Array:
 	var regex = RegEx.new()
 	regex.compile("```" + block_name + "\\s*\\n([\\s\\S]*?)\\n```")
 	

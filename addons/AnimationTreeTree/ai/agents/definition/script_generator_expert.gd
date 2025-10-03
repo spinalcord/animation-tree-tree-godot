@@ -43,7 +43,7 @@ func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	
 	TreeDebug.msg("LLM Result: " + str(llm_result))
 	
-	var all_produced_gdscripts: Array = manager._extract_block_from_markdown(llm_result, "gdscript")
+	var all_produced_gdscripts: Array = manager.extract_block_from_markdown(llm_result, "gdscript")
 	
 	TreeDebug.msg("Extracted GDScript blocks: " + str(all_produced_gdscripts.size()))
 	

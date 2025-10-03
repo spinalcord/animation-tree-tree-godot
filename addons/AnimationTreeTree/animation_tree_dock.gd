@@ -190,23 +190,6 @@ func get_avaible_animations() -> String:
 	var avaible_animations: String = ",".join(filtered)
 	return avaible_animations
 
-func read_file(relativ_file_path: String) -> String:
-	# Open the file for reading
-	var file = FileAccess.open(get_script().resource_path.get_base_dir() + "/" + relativ_file_path, FileAccess.READ)
-	
-	# Check if file was opened successfully
-	if file == null:
-		print("Error opening file: ", FileAccess.get_open_error())
-		return ""
-	
-	# Read the entire file content
-	var content = file.get_as_text()
-	
-	# Close the file
-	file.close()
-	
-	return content
-
 func extract_block_from_markdown(text: String, block_name: String) -> Array:
 	var regex = RegEx.new()
 	regex.compile("```" +block_name+"\\s*\\n([\\s\\S]*?)\\n```")
@@ -394,7 +377,7 @@ func _refresh_tree_view() -> void:
 	
 	tree_manager.populate_tree_view(tree_view, selected_animation_tree.tree_root)
 
-func _update_clipboard_status(has_content: bool, node_type: String = "", source_tree_name: String = "", node_name: String = "") -> void:
+func update_clipboard_status(has_content: bool, node_type: String = "", source_tree_name: String = "", node_name: String = "") -> void:
 	ui_manager.update_clipboard_status(clipboard_status_label, buttons.paste_button, has_content, node_type, source_tree_name, node_name, selected_animation_tree != null)
 
 func _on_tree_item_selected() -> void:

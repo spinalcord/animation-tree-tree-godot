@@ -23,7 +23,7 @@ func tool_get_godot_scripting_guidline() -> String:
 	
 	# Check if file was opened successfully
 	if file == null:
-		print("Error opening file: ", FileAccess.get_open_error())
+		print("Error opening guidline: ", FileAccess.get_open_error())
 		return ""
 	
 	# Read the entire file content
