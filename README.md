@@ -1,4 +1,4 @@
-<img src="screenshots/3.png" width="400">  
+<img src="screenshots/3.png" width="400"><img src="screenshots/6.gif" width="400">  
 
 # AnimationTreeTree
 
