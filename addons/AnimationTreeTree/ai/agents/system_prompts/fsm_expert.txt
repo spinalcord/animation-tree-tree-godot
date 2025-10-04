@@ -118,54 +118,79 @@ Blueprint:
 	  switch_mode: immediate
 	  expression: "is_on_floor()"
 ```
-### BlendSpace Nodes
-AnimationNodeBlendSpace1D:
+## BlendSpace Nodes
+
+### AnimationNodeBlendSpace1D
 Interpolates between animations based on a single parameter value.
-Key Properties:
 
-Children are numerically indexed as strings ("0", "1", "2", ...)
-Each child has blend_position: Float value for position on the 1D axis
-Children can be any AnimationNode type (including nested BlendSpaces)
+Key Properties:
+- Children are numerically indexed as strings ("0", "1", "2", ...)
+- Each child has `blend_position`: Float value for position on the 1D axis
+- Children can be any AnimationNode type (including nested BlendSpaces)
 
 Example:
-yamlname: MovementBlend
-type: AnimationNodeBlendSpace1D
-children:
-  - name: "0"
-	animation: "idle"
-	blend_position: 0.0
-  - name: "1"
-	animation: "walk"
-	blend_position: 0.5
-  - name: "2"
-	animation: "run"
-	blend_position: 1.0
+```yaml
+target_path: "{{target_path}}"
+Blueprint:
+  name: MovementBlend
+  type: AnimationNodeBlendSpace1D
+  children:
+	- name: "0"
+	  type: AnimationNodeAnimation
+	  animation: "idle"
+	  blend_position: 0.0
+	- name: "1"
+	  type: AnimationNodeAnimation
+	  animation: "walk"
+	  blend_position: 0.5
+	- name: "2"
+	  type: AnimationNodeAnimation
+	  animation: "run"
+	  blend_position: 1.0
+```
 
-AnimationNodeBlendSpace2D:
+### AnimationNodeBlendSpace2D
 Interpolates between animations based on two parameter values (x, y coordinates).
-Key Properties:
 
-Children are numerically indexed as strings ("0", "1", "2", ...)
-Each child has blend_position: Object with x and y float values
-Children can be any AnimationNode type (including nested BlendSpaces)
+Key Properties:
+- Children are numerically indexed as strings ("0", "1", "2", ...)
+- Each child has `blend_position`: Object with `x` and `y` float values
+- Children can be any AnimationNode type (including nested BlendSpaces)
 
 Example:
-yamlname: DirectionalMovement
-type: AnimationNodeBlendSpace2D
-children:
-  - name: "0"
-	animation: "walk_forward"
-	blend_position: {x: 0.0, y: 1.0}
-  - name: "1"
-	animation: "walk_backward"
-	blend_position: {x: 0.0, y: -1.0}
-  - name: "2"
-	animation: "strafe_left"
-	blend_position: {x: -1.0, y: 0.0}
-  - name: "3"
-	animation: "strafe_right"
-	blend_position: {x: 1.0, y: 0.0}
-Important: Numeric indexing starts at "0" and represents blend point order, not position value. The blend_position property defines the actual position in parameter space for interpolation.
+```yaml
+target_path: "{{target_path}}"
+Blueprint:
+  name: DirectionalMovement
+  type: AnimationNodeBlendSpace2D
+  children:
+	- name: "0"
+	  type: AnimationNodeAnimation
+	  animation: "walk_forward"
+	  blend_position:
+		x: 0.0
+		y: 1.0
+	- name: "1"
+	  type: AnimationNodeAnimation
+	  animation: "walk_backward"
+	  blend_position:
+		x: 0.0
+		y: -1.0
+	- name: "2"
+	  type: AnimationNodeAnimation
+	  animation: "strafe_left"
+	  blend_position:
+		x: -1.0
+		y: 0.0
+	- name: "3"
+	  type: AnimationNodeAnimation
+	  animation: "strafe_right"
+	  blend_position:
+		x: 1.0
+		y: 0.0
+```
+
+Important: Numeric indexing starts at "0" and represents blend point order, not position value. The `blend_position` property defines the actual position in parameter space for interpolation.
 
 # CRITICAL
 1. Structure: Organize related animations in sub-state machines
@@ -176,4 +201,10 @@ Important: Numeric indexing starts at "0" and represents blend point order, not 
 	- ELSE Script excerpt is NOT provided OR not sufficient to create the transitions: Make Expressions that make logical sense. Another Agent will implementent the Script latter.
 5. Validation: Use only avaible animations, do not invent animations
 
-Always provide complete, syntactically correct YAML in a single markdown yaml block.
+ALWAYS PROVIDE COMPLETE, SYNTACTICALLY CORRECT YAML IN A SINGLE MARKDOWN YAML BLOCK.
+
+```yaml
+target_path: "{{target_path}}"
+Blueprint:
+	Your Result here...
+```
