@@ -15,7 +15,6 @@ signal dialog_result(result: bool)
 signal text_result(result: String)
 
 func show_confirmation(message: String, title: String, add_cancel_button: bool = true) -> bool:
-	return true
 	# Create AcceptDialog instance
 	var dialog = AcceptDialog.new()
 	dialog.title = title
@@ -54,7 +53,6 @@ func show_confirmation(message: String, title: String, add_cancel_button: bool =
 	return result
 
 func show_info(message: String, title: String) -> void:
-	return
 	# Create AcceptDialog instance - no cancel button for info
 	var dialog = AcceptDialog.new()
 	dialog.title = title
