@@ -52,6 +52,7 @@ AnimationTreeTree includes custom tool calling logic that helps the AI:
 
 ### Merge ⚠️
 Merge multiple nodes into a single state machine
+
 <img src="screenshots/4.gif" width="400">  
 
 > [!WARNING]
