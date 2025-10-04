@@ -13,9 +13,6 @@ extends ConAITool
 # this is a tool class. An agent can use tool to enhance
 # your output tools begin with tool prefix. 
 
-## This function returns the Input map.
-func tool_get_input_map() -> String:
-	return ",".join(InputMap.get_actions())
 
 ## Returns Godots current scripting guidline.
 func tool_get_godot_scripting_guidline() -> String:

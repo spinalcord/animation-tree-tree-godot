@@ -178,6 +178,7 @@ func _build_system_prompt(
 	systemprompt = systemprompt.replace("{{avaible_types}}", avaible_types)
 	systemprompt = systemprompt.replace("{{boilerplate}}", boilerplate)
 	systemprompt = systemprompt.replace("{{blueprint}}", blueprint)
+	systemprompt = systemprompt.replace("{{input_map}}", ",".join(InputMap.get_actions()))
 	
 	return systemprompt
 

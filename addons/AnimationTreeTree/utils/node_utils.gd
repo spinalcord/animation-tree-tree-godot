@@ -46,7 +46,6 @@ static func get_blend_tree_node(blend_tree: AnimationNodeBlendTree, node_name: S
 	return blend_tree.get_node(node_name)
 
 # Get node at a specific path from root using native methods
-# Get node at a specific path from root using native methods
 static func get_node_at_path(root: AnimationNode, path: String) -> AnimationNode:
 	if not is_instance_valid(root):
 		return null
