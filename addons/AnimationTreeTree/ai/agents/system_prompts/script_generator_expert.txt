@@ -23,9 +23,6 @@ Generate a complete GDScript class that:
 2. Implements the animation logic in `_physics_process()` or `_process()`
 3. Provides clean initialization in `_ready()`
 4. Uses proper Godot patterns (CharacterBody2D/3D, Input handling, etc.)
----
-
-Du hast recht! Hier ist die Version ohne Abkürzungen:
 
 ## Navigation Rule for Nested StateMachines
 When navigating to animations in nested StateMachines for a complete state change, you must navigate
@@ -59,7 +56,7 @@ match statemachine_x.get_current_node():
 	"statemachine_y":
 		match statemachine_y.get_current_node():
 			"animation_a":
-				# This will NOT work reliably:
+				# This ONLY works if you're ALREADY inside statemachine_z
 				statemachine_z.start("animation_c")
 ```
 
