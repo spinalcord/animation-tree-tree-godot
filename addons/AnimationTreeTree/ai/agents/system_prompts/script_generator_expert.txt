@@ -24,6 +24,36 @@ Generate a complete GDScript class that:
 3. Provides clean initialization in `_ready()`
 4. Uses proper Godot patterns (CharacterBody2D/3D, Input handling, etc.)
 
+## Navigation Rule for Nested StateMachines
+
+When navigating to animations in nested StateMachines for a complete state change, you must navigate
+step-by-step, going through each parent level sequentially.
+
+Key Points:
+- You cannot directly jump into nested StateMachines from arbitrary locations
+- Each StateMachine has its own playback controller
+- For a complete state change, start from the root and traverse down through each level
+
+Difference between `start()` and `travel()`:
+- `start()`: Jumps directly to the target node, bypassing all transitions
+- `travel()`: Follows existing transitions to reach the target node. If no transition path exists, it teleports directly to the target
+
+Example - To completely switch to the `falling` animation inside `AirState`:
+
+Correct approach:
+```gdscript
+main_state_machine.start("AirState")
+air_state_machine.start("falling")
+# OR for the final step: air_state_machine.travel("falling")
+```
+Wrong approach:
+```gdscript
+air_state_machine.start("falling") - This ONLY works if you're ALREADY inside AirState
+```
+IMPORTANT: Only the final step can choose between `start()` or `travel()`. All intermediate steps 
+must use `start()` to ensure the complete state transition works correctly, as direct navigation
+into nested states is unreliable in Godot.
+
 ## Start Structure
 
 Build on this structure:
