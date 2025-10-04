@@ -29,12 +29,30 @@ AnimationTreeTree is a Godot addon that uses AI to generate complete animation s
 - Uses AI to fill in the logic based on your animation tree structure
 - Supports tool calling for better results
 
-### Additional Tools
-- Copy and paste nodes, state machines, or animations while keeping transitions
-- Merge multiple nodes into a single state machine
-- Toolbar with useful functions for animation tree management
+## How It Works
 
-# Merge ⚠️
+1. Open the prompt dialog in your animation tree
+2. Select the appropriate expert (state machine or script generator)
+3. Describe what you need
+4. AnimationTreeTree generates the structure for you
+
+The script generator works by:
+- Creating a boilerplate code template based on your selected nodes
+- Generating a YAML blueprint with animation names and expressions
+- Using specialized AI prompts with these templates to produce deterministic results
+
+### Function/Tool Calling through AI
+
+AnimationTreeTree includes custom tool calling logic that helps the AI:
+- Access your Godot input map (no more invented input strings)
+- Read the Godot scripting guidelines to prevent mixing Godot 3 and 4 conventions
+- Use the right functions and information for your project
+
+# Additional Features
+
+### Merge ⚠️
+Merge multiple nodes into a single state machine
+<img src="screenshots/4.gif" width="400">  
 
 > [!WARNING]
 > **Merge nodes carefully** - The merge feature (This is not an AI feature) is powerful but can cause not expected behaviors if certain edge cases exists. The algorithm tries to preserve structure GOOD as possible.
@@ -51,24 +69,10 @@ After:
 
 You can see that we preserved both outgoing transitions inside the new `Merged State Machine`. But we have an additional transition and `End` node that can lead to an unexpected behavior.
 
-## How It Works
+### Copy & Paste
+Copy and paste nodes, state machines, or animations while keeping transitions
+<img src="screenshots/5.gif" width="400">  
 
-1. Open the prompt dialog in your animation tree
-2. Select the appropriate expert (state machine or script generator)
-3. Describe what you need
-4. AnimationTreeTree generates the structure for you
-
-The script generator works by:
-- Creating a boilerplate code template based on your selected nodes
-- Generating a YAML blueprint with animation names and expressions
-- Using specialized AI prompts with these templates to produce deterministic results
-
-### Tool Calling
-
-AnimationTreeTree includes custom tool calling logic that helps the AI:
-- Access your Godot input map (no more invented input strings)
-- Read the Godot scripting guidelines to prevent mixing Godot 3 and 4 conventions
-- Use the right functions and information for your project
 
 ## Setup
 
