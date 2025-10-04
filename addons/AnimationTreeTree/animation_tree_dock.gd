@@ -207,6 +207,7 @@ func _on_ai_pressed():
 	var target_path: String = ""
 	if selected_item != null:
 		target_path = MetadataUtils.get_path_from_metadata(selected_item.get_metadata(0))
+		target_path = _get_container_path(target_path)
 	
 	await ai_manager.execute_ai_action(
 		selected_animation_tree,
@@ -443,6 +444,8 @@ func _get_selected_node_paths() -> Array[String]:
 	
 	return node_paths
 
+
+
 func update_tree_view_after_operation() -> void:
 	var current_state = state_manager.capture_tree_state(tree_view)
 	await get_tree().process_frame
@@ -451,6 +454,19 @@ func update_tree_view_after_operation() -> void:
 	await get_tree().process_frame
 	
 	state_manager.restore_tree_state(tree_view, current_state)
+
+func _get_container_path(path: String) -> String:
+	if path.is_empty():
+		return path
+	
+	var node = NodeUtils.get_node_at_path(selected_animation_tree.tree_root, path)
+	if not is_instance_valid(node):
+		return path
+	
+	if node is AnimationNodeStateMachine or node is AnimationNodeBlendTree or node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D:
+		return path
+	
+	return NodeUtils.get_parent_path(path)
 
 func _exit_tree() -> void:
 	if editor_selection and editor_selection.selection_changed.is_connected(_on_editor_selection_changed):

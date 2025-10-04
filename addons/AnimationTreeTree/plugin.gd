@@ -107,6 +107,8 @@ func _exit_tree() -> void:
 		remove_control_from_docks(dock)
 	dock = null
 
+
+
 func _update_dock_tree_safely() -> void:
 	if is_instance_valid(dock) and dock.get_parent():
 		dock.update_tree_view_after_operation()

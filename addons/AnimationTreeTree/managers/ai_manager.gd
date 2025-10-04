@@ -139,6 +139,16 @@ func _create_prompt_dialog() -> ConfigDialog:
 	if _get_script_callback.call().strip_edges().is_empty():
 		warnings += "- Your ExpressionBaseNodeScript has no boolean types, therefore some experts are going to assume expressions."
 	
+		
+	prompt_fields.append(ConfigField.new(
+		"target_info", 
+		"Experts are going to assume that you want work at this AnimationTree Node: '%s'. " % [_target_path if !_target_path.is_empty() else "Root"], 
+		"Your selection", 
+		"General", 
+		"callout", 
+        "important"
+	))
+	
 	if warnings.is_empty() == false:
 		prompt_fields.append(ConfigField.new(
 			"prompt_warnings", 
