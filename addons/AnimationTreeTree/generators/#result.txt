@@ -1,0 +1,8 @@
+📋 Smart processing clipboard content
+🎯 Target: /home/a7/Desktop/Projekte/animation-tree-tree-godot/addons/AnimationTreeTree/generators/boilerplate_generator.gd | Log: result.txt
+🚀 Smart processing 2 SEARCH/REPLACE block(s)
+🎯 Target file: /home/a7/Desktop/Projekte/animation-tree-tree-godot/addons/AnimationTreeTree/generators/boilerplate_generator.gd
+💾 Created backup: /home/a7/Desktop/Projekte/animation-tree-tree-godot/addons/AnimationTreeTree/generators/boilerplate_generator.gd.bak
+❌ Block 1: No matches found (tried all smart strategies)
+❌ Block 2: No matches found (tried all smart strategies)
+❌ No matches found in /home/a7/Desktop/Projekte/animation-tree-tree-godot/addons/AnimationTreeTree/generators/boilerplate_generator.gd

@@ -18,21 +18,24 @@ func generate_animation_tree_boilerplate(animation_tree: AnimationTree, selected
 		return "# No Animation Tree\n\nNo AnimationTree selected or tree is empty."
 	
 	var state_machines: Array[Dictionary] = []
+	var blend_spaces: Array[Dictionary] = []
 	
 	if selected_paths.is_empty():
 		# If no selection, use the entire tree
 		state_machines = boilerplate_generator.collect_state_machines(animation_tree.tree_root, "")
+		blend_spaces = boilerplate_generator.collect_blend_spaces(animation_tree.tree_root, "")
 	else:
-		# Collect only selected state machines and their relevant parents/children
+		# Collect only selected state machines and blend spaces
 		state_machines = boilerplate_generator.collect_selected_state_machines(animation_tree.tree_root, "", selected_paths)
+		blend_spaces = boilerplate_generator.collect_selected_blend_spaces(animation_tree.tree_root, "", selected_paths)
 	
-	if state_machines.is_empty():
-		return "# No State Machines Found\n\nNo state machines found in selection or tree."
+	if state_machines.is_empty() and blend_spaces.is_empty():
+		return "# No State Machines or Blend Spaces Found\n\nNo state machines or blend spaces found in selection or tree."
 	
 	var code = ""
 	
-	# Generate complete match statements
-	code += boilerplate_generator.generate_complete_boilerplate(state_machines)
+	# Generate complete boilerplate with blend spaces
+	code += boilerplate_generator.generate_complete_boilerplate(state_machines, blend_spaces)
 	
 	return code
 

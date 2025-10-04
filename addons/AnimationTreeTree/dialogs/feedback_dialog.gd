@@ -14,7 +14,6 @@ extends RefCounted
 signal dialog_result(result: bool)
 signal text_result(result: String)
 
-
 func show_confirmation(message: String, title: String, add_cancel_button: bool = true) -> bool:
 	# Create AcceptDialog instance
 	var dialog = AcceptDialog.new()
@@ -81,7 +80,6 @@ func show_info(message: String, title: String) -> void:
 	
 	# Use call_deferred for safe cleanup after signal processing is complete
 	dialog.call_deferred("queue_free")
-
 
 signal pick_result(result: String)
 
@@ -197,7 +195,6 @@ func show_pick(message: String, title: String, options: Dictionary[String, bool]
 	dialog.call_deferred("queue_free")
 	
 	return result
-	
 	
 signal decisions_result(result: Dictionary)
 
@@ -348,6 +345,7 @@ func show_text(message: String, title: String, default_text: String = "", multil
 	
 var active_progress_dialog: AcceptDialog = null
 
+#region Progress Dialog
 func show_progress(message: String, title: String, show_cancel: bool = false) -> AcceptDialog:
 	# Create AcceptDialog instance
 	var dialog = AcceptDialog.new()
@@ -433,3 +431,4 @@ func close_progress(dialog: AcceptDialog) -> void:
 	
 	if active_progress_dialog == dialog:
 		active_progress_dialog = null
+#endregion 

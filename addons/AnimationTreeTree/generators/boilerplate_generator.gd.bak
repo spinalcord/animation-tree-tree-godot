@@ -10,78 +10,6 @@
 
 class_name BoilerplateGenerator
 
-# Collect all blend spaces (1D and 2D)
-func collect_blend_spaces(node: AnimationNode, path: String) -> Array[Dictionary]:
-	var blend_spaces: Array[Dictionary] = []
-	
-	if node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D:
-		var blend_space_info = {
-			"path": path,
-			"variable_name": _path_to_variable_name(path),
-			"type": "1D" if node is AnimationNodeBlendSpace1D else "2D",
-			"node": node
-		}
-		blend_spaces.append(blend_space_info)
-	
-	if node is AnimationNodeStateMachine:
-		var state_names = NodeUtils.get_container_children(node)
-		for state_name in state_names:
-			var child_path = PathUtils.build_child_path(path, state_name)
-			var state_node = node.get("states/%s/node" % state_name) as AnimationNode
-			if state_node:
-				var child_blend_spaces = collect_blend_spaces(state_node, child_path)
-				blend_spaces.append_array(child_blend_spaces)
-	
-	elif node is AnimationNodeBlendTree:
-		var node_names = NodeUtils.get_container_children(node)
-		for node_name in node_names:
-			if node_name == "output":
-				continue
-			var child_path = PathUtils.build_child_path(path, node_name)
-			var blend_node = NodeUtils.get_blend_tree_node(node, node_name)
-			if blend_node:
-				var child_blend_spaces = collect_blend_spaces(blend_node, child_path)
-				blend_spaces.append_array(child_blend_spaces)
-	
-	return blend_spaces
-
-# Collect only selected blend spaces
-func collect_selected_blend_spaces(node: AnimationNode, path: String, selected_paths: Array[String]) -> Array[Dictionary]:
-	var blend_spaces: Array[Dictionary] = []
-	
-	var is_selected = _is_path_selected_or_parent(path, selected_paths)
-	
-	if (node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D) and is_selected:
-		var blend_space_info = {
-			"path": path,
-			"variable_name": _path_to_variable_name(path),
-			"type": "1D" if node is AnimationNodeBlendSpace1D else "2D",
-			"node": node
-		}
-		blend_spaces.append(blend_space_info)
-	
-	if node is AnimationNodeStateMachine:
-		var state_names = NodeUtils.get_container_children(node)
-		for state_name in state_names:
-			var child_path = PathUtils.build_child_path(path, state_name)
-			var state_node = node.get("states/%s/node" % state_name) as AnimationNode
-			if state_node:
-				var child_blend_spaces = collect_selected_blend_spaces(state_node, child_path, selected_paths)
-				blend_spaces.append_array(child_blend_spaces)
-	
-	elif node is AnimationNodeBlendTree:
-		var node_names = NodeUtils.get_container_children(node)
-		for node_name in node_names:
-			if node_name == "output":
-				continue
-			var child_path = PathUtils.build_child_path(path, node_name)
-			var blend_node = NodeUtils.get_blend_tree_node(node, node_name)
-			if blend_node:
-				var child_blend_spaces = collect_selected_blend_spaces(blend_node, child_path, selected_paths)
-				blend_spaces.append_array(child_blend_spaces)
-	
-	return blend_spaces
-
 # Original method for collecting all state machines
 func collect_state_machines(node: AnimationNode, path: String) -> Array[Dictionary]:
 	var state_machines: Array[Dictionary] = []
@@ -199,7 +127,7 @@ func _get_filtered_states(state_machine: AnimationNodeStateMachine, current_path
 	return filtered_states
 
 # Generate complete boilerplate code with match statements in _physics_process
-func generate_complete_boilerplate(state_machines: Array[Dictionary], blend_spaces: Array[Dictionary] = []) -> String:
+func generate_complete_boilerplate(state_machines: Array[Dictionary]) -> String:
 	var code = ""
 	
 	# Export variables
@@ -220,25 +148,6 @@ func generate_complete_boilerplate(state_machines: Array[Dictionary], blend_spac
 			param_path += "/playback"
 			
 			code += "@onready var %s: AnimationNodeStateMachinePlayback = anim_tree.get(\"%s\")\n" % [var_name, param_path]
-		code += "\n"
-	
-	# OnReady variables for blend spaces
-	if not blend_spaces.is_empty():
-		code += "# Generated BlendSpace variables\n"
-		for bs_info in blend_spaces:
-			var path = bs_info.path
-			var var_name = bs_info.variable_name
-			var bs_type = bs_info.type
-			
-			var param_path = "parameters"
-			if not path.is_empty():
-				param_path += "/" + path
-			param_path += "/blend_position"
-			
-			var type_hint = "Vector2" if bs_type == "2D" else "float"
-			var example_value = "Vector2(x_1, y_1)" if bs_type == "2D" else "value"
-			code += "# Example to set the blend position: anim_tree.set(\"%s\", %s)\n" % [param_path, example_value]
-			code += "@onready var %s: %s = anim_tree.get(\"%s\") as %s\n" % [var_name, type_hint, param_path, type_hint]
 		code += "\n"
 	
 	# _ready function
@@ -262,42 +171,19 @@ func generate_complete_boilerplate(state_machines: Array[Dictionary], blend_spac
 	
 	return code
 
-func generate_onready_variables(state_machines: Array[Dictionary], blend_spaces: Array[Dictionary] = []) -> String:
-	var code = ""
+func generate_onready_variables(state_machines: Array[Dictionary]) -> String:
+	var code = "# Generated AnimationNodeStateMachinePlayback variables\n"
 	
-	# State machines
-	if not state_machines.is_empty():
-		code += "# Generated AnimationNodeStateMachinePlayback variables\n"
-		for sm_info in state_machines:
-			var path = sm_info.path
-			var var_name = sm_info.variable_name
-			
-			var param_path = "parameters"
-			if not path.is_empty():
-				param_path += "/" + path
-			param_path += "/playback"
-			
-			code += "@onready var %s: AnimationNodeStateMachinePlayback = anim_tree.get(\"%s\")\n" % [var_name, param_path]
-		code += "\n"
-	
-	# Blend spaces
-	if not blend_spaces.is_empty():
-		code += "# Generated BlendSpace variables\n"
-		for bs_info in blend_spaces:
-			var path = bs_info.path
-			var var_name = bs_info.variable_name
-			var bs_type = bs_info.type
-			
-			var param_path = "parameters"
-			if not path.is_empty():
-				param_path += "/" + path
-			param_path += "/blend_position"
-			
-			var type_hint = "Vector2" if bs_type == "2D" else "float"
-			var example_value = "Vector2(x_1, y_1)" if bs_type == "2D" else "value"
-			code += "# Example to set the blend position: anim_tree.set(\"%s\", %s)\n" % [param_path, example_value]
-			code += "@onready var %s: %s = anim_tree.get(\"%s\") as %s\n" % [var_name, type_hint, param_path, type_hint]
-		code += "\n"
+	for sm_info in state_machines:
+		var path = sm_info.path
+		var var_name = sm_info.variable_name
+		
+		var param_path = "parameters"
+		if not path.is_empty():
+			param_path += "/" + path
+		param_path += "/playback"
+		
+		code += "@onready var %s: AnimationNodeStateMachinePlayback = anim_tree.get(\"%s\")\n" % [var_name, param_path]
 	
 	return code
 

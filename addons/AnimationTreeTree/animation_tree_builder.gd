@@ -222,7 +222,8 @@ func delete_node(node_path: String) -> bool:
 		TreeDebug.msg("Parent not found: " + parent_path, true)
 		return false
 
-	if parent is AnimationNodeBlendSpace1D or AnimationNodeBlendSpace2D:
+	if parent is AnimationNodeBlendSpace1D or parent is AnimationNodeBlendSpace2D:
+		print(parent)
 		push_error("You cannot delete Blendspace1D/Blendspace2D points with AnimationTreeTree-Addon. You have to do it manually in the AnimationTree-Viewport.")
 		return false
 	
