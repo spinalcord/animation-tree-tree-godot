@@ -49,7 +49,7 @@ After:
 
 <img src="screenshots/2.png" width="400">
 
-You can see that we preserved both outgoing transitions inside the new `Merged State Machine`. But we have an additional transition and Stop node that can lead to an unexpected behavior.
+You can see that we preserved both outgoing transitions inside the new `Merged State Machine`. But we have an additional transition and `End` node that can lead to an unexpected behavior.
 
 ## How It Works
 
