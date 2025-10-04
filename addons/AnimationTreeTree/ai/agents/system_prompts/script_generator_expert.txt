@@ -23,36 +23,48 @@ Generate a complete GDScript class that:
 2. Implements the animation logic in `_physics_process()` or `_process()`
 3. Provides clean initialization in `_ready()`
 4. Uses proper Godot patterns (CharacterBody2D/3D, Input handling, etc.)
+---
+
+Du hast recht! Hier ist die Version ohne Abkürzungen:
 
 ## Navigation Rule for Nested StateMachines
-
 When navigating to animations in nested StateMachines for a complete state change, you must navigate
 step-by-step, going through each parent level sequentially.
 
 Key Points:
 - You cannot directly jump into nested StateMachines from arbitrary locations
 - Each StateMachine has its own playback controller
-- For a complete state change, start from the root and traverse down through each level
+- For a complete state change, traverse down through each level
 
 Difference between `start()` and `travel()`:
 - `start()`: Jumps directly to the target node, bypassing all transitions
 - `travel()`: Follows existing transitions to reach the target node. If no transition path exists, it teleports directly to the target
 
-Example - To completely switch to the `falling` animation inside `AirState`:
+Example - To completely switch to the `animation_c` animation inside `statemachine_z` from within the `animation_a` state in `statemachine_y`:
 
-Correct approach:
 ```gdscript
-main_state_machine.start("AirState")
-air_state_machine.start("falling")
-# OR for the final step: air_state_machine.travel("falling")
+match statemachine_x.get_current_node():
+	"statemachine_y":
+		match statemachine_y.get_current_node():
+			"animation_a":
+				# To switch to animation_c in statemachine_z, navigate step-by-step:
+				statemachine_x.start("statemachine_z")
+				statemachine_z.start("animation_c")
+				# OR for the final step: statemachine_z.travel("animation_c")
 ```
-Wrong approach:
+
+WRONG approach:
 ```gdscript
-air_state_machine.start("falling") - This ONLY works if you're ALREADY inside AirState
+match statemachine_x.get_current_node():
+	"statemachine_y":
+		match statemachine_y.get_current_node():
+			"animation_a":
+				# This will NOT work reliably:
+				statemachine_z.start("animation_c")
 ```
+
 IMPORTANT: Only the final step can choose between `start()` or `travel()`. All intermediate steps 
-must use `start()` to ensure the complete state transition works correctly, as direct navigation
-into nested states is unreliable in Godot.
+must use `start()` to ensure the complete state transition works correctly.
 
 ## Start Structure
 
