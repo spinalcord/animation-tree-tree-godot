@@ -51,13 +51,23 @@ func _enter_tree() -> void:
 
 # SIMPLIFIED: Merge now uses AnimationTreeBuilder
 func _on_merge_requested(animation_tree: AnimationTree, node_paths: Array[String]) -> void:
+	var dialog = ConfirmationDialog.new()
 	var node_count = node_paths.size()
-	var confirmed = await feedback.show_confirmation(
-		"Merge " + str(node_count) + " nodes into a new StateMachine?",
-		"Confirm Merge"
-	)
+	dialog.dialog_text = "Merge " + str(node_count) + " nodes into a new StateMachine?"
+	dialog.title = "Confirm Merge"
+	dialog.dialog_autowrap = true
 	
-	if confirmed:
+	var main_screen = EditorInterface.get_editor_main_screen()
+	if is_instance_valid(main_screen):
+		main_screen.add_child(dialog)
+		dialog.popup_centered(Vector2i(400, 150))
+		
+		await dialog.confirmed
+		
+		if is_instance_valid(dialog):
+			dialog.queue_free()
+		
+		# SIMPLIFIED: Use AnimationTreeBuilder instead of MergeManager
 		var builder = AnimationTreeBuilder.new(animation_tree)
 		if builder.merge_nodes(node_paths, "MergedStateMachine"):
 			TreeDebug.msg(
@@ -69,13 +79,21 @@ func _on_merge_requested(animation_tree: AnimationTree, node_paths: Array[String
 
 #  Delete uses AnimationTreeBuilder
 func _on_delete_requested(animation_tree: AnimationTree, node_paths: Array[String]) -> void:
+	var dialog = ConfirmationDialog.new()
 	var node_count = node_paths.size()
-	var confirmed = await feedback.show_confirmation(
-		"Delete this node?" if node_count == 1 else "Delete these " + str(node_count) + " nodes?",
-		"Confirm Delete"
-	)
+	dialog.dialog_text = "Delete this node?" if node_count == 1 else "Delete these " + str(node_count) + " nodes?"
 	
-	if confirmed:
+	var main_screen = EditorInterface.get_editor_main_screen()
+	if is_instance_valid(main_screen):
+		main_screen.add_child(dialog)
+		dialog.popup_centered()
+		
+		await dialog.confirmed
+		
+		if is_instance_valid(dialog):
+			dialog.queue_free()
+		
+		# SIMPLIFIED: Use AnimationTreeBuilder instead of NodeManager
 		var builder = AnimationTreeBuilder.new(animation_tree)
 		if builder.delete_nodes(node_paths):
 			call_deferred("_update_dock_tree_safely")
