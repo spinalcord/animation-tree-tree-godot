@@ -154,6 +154,9 @@ func _validate_nodes_dont_exist(target_path: String, node_data: Dictionary) -> b
 	TreeDebug.msg("All nodes validated as non-existing")
 	return true
 
+func _is_parentable_node(node: AnimationNode) -> bool:
+	return node is AnimationNodeStateMachine or node is AnimationNodeBlendTree or node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D
+
 func _collect_existing_nodes(parent_path: String, node_data: Dictionary, existing: Array[String]) -> void:
 	var node_name = node_data.get("name", "")
 	if not node_name.is_empty():
@@ -162,7 +165,11 @@ func _collect_existing_nodes(parent_path: String, node_data: Dictionary, existin
 		TreeDebug.msg("Check if \"" + full_path + "\" exists.")
 		
 		if _builder.has_node(full_path):
-			existing.append(full_path)
+			var node = _builder.get_node(full_path)
+			if _is_parentable_node(node):
+				TreeDebug.msg("Node \"" + full_path + "\" exists but is parentable, skipping error")
+			else:
+				existing.append(full_path)
 		
 		# Check children recursively
 		var children = node_data.get("children", [])
@@ -231,6 +238,19 @@ func _build_node(parent_path: String, node_data: Dictionary, parent_node: Animat
 	
 	TreeDebug.msg("Building node: " + node_name + " (" + node_type + ") at " + parent_path)
 	
+	# Check if node already exists
+	var full_path = parent_path + "/" + node_name
+	var node_already_exists = _builder.has_node(full_path)
+	var existing_node: AnimationNode = null
+	
+	if node_already_exists:
+		existing_node = _builder.get_node(full_path)
+		if _is_parentable_node(existing_node):
+			TreeDebug.msg("Node \"" + full_path + "\" already exists and is parentable, reusing it")
+		else:
+			_add_error("Node already exists and is not parentable: " + node_name)
+			return false
+	
 	# Calculate circular position for this node
 	var position = Vector2.ZERO
 	if _level_counters.has(parent_path) and _level_totals.has(parent_path):
@@ -248,38 +268,42 @@ func _build_node(parent_path: String, node_data: Dictionary, parent_node: Animat
 		parent_node = _builder.get_node(parent_path)
 	var parent_is_blendspace = parent_node is AnimationNodeBlendSpace1D or parent_node is AnimationNodeBlendSpace2D
 	
-	# Build node configuration
-	var config = {
-		"type": node_type,
-		"name": node_name,
-		"position": position
-	}
-	
-	# Add animation if specified
-	if not animation.is_empty():
-		config["animation"] = animation
-	
-	# Add additional properties
-	if not properties.is_empty():
-		config["properties"] = properties
-	
-	if parent_is_blendspace:
-		if not node_name.is_valid_int():
-			_add_error("BlendSpace children must have numeric names, got: " + node_name)
-			return false
-	
-	# Create the node
-	if not _builder.add_node(parent_path, config):
-		_add_error("Failed to create node: " + node_name)
-		return false
-	
 	# For BlendSpace parents, get direct reference to the added node
 	var created_node: AnimationNode = null
-	if parent_is_blendspace:
-		created_node = _builder.get_last_blend_point_node(parent_path)
-		if not is_instance_valid(created_node):
-			_add_error("Failed to get blend point node: " + node_name)
+	
+	if not node_already_exists:
+		# Build node configuration
+		var config = {
+			"type": node_type,
+			"name": node_name,
+			"position": position
+		}
+		
+		# Add animation if specified
+		if not animation.is_empty():
+			config["animation"] = animation
+		
+		# Add additional properties
+		if not properties.is_empty():
+			config["properties"] = properties
+		
+		if parent_is_blendspace:
+			if not node_name.is_valid_int():
+				_add_error("BlendSpace children must have numeric names, got: " + node_name)
+				return false
+		
+		# Create the node
+		if not _builder.add_node(parent_path, config):
+			_add_error("Failed to create node: " + node_name)
 			return false
+		
+		if parent_is_blendspace:
+			created_node = _builder.get_last_blend_point_node(parent_path)
+			if not is_instance_valid(created_node):
+				_add_error("Failed to get blend point node: " + node_name)
+				return false
+	else:
+		created_node = existing_node
 	
 	# Build child nodes recursively
 	for child_data in children:

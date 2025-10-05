@@ -113,7 +113,10 @@ func _get_button_config() -> Array:
 			"handler": _on_ai_pressed,
 			"disabled": false
 		}
+				
 	]
+
+
 
 func _create_ui() -> void:
 	var components = ui_manager.create_dock_ui(_get_button_config())

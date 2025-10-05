@@ -393,7 +393,7 @@ func _create_callout_field(field: ConfigField, parent: VBoxContainer) -> void:
 		"note":
 			style_box.bg_color = Color(0.5, 0.7, 1.0, 0.3)  # Baby blue
 		_:
-			style_box.bg_color = Color(0.5, 0.5, 0.5, 0.3)  # Default gray
+			style_box.bg_color = Color(0.0, 0.0, 0.0, 0.3)  # Default gray
 	
 	panel.add_theme_stylebox_override("panel", style_box)
 	
