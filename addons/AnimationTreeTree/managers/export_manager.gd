@@ -13,7 +13,7 @@ var yaml_formater = BlueprintGenerator.new()
 var boilerplate_generator = BoilerplateGenerator.new()
 
 # Add the missing method that calls the boilerplate generator
-func generate_animation_tree_boilerplate(animation_tree: AnimationTree, selected_paths: Array[String] = []) -> String:
+func export_tree_as_boilerplate(animation_tree: AnimationTree, selected_paths: Array[String] = []) -> String:
 	if not animation_tree or not animation_tree.tree_root:
 		return "# No Animation Tree\n\nNo AnimationTree selected or tree is empty."
 	
@@ -41,7 +41,7 @@ func generate_animation_tree_boilerplate(animation_tree: AnimationTree, selected
 
 func export_tree_as_yaml(animation_tree: AnimationTree, selected_paths: Array[String] = []) -> String:
 	if not animation_tree or not animation_tree.tree_root:
-		return "# No Animation Tree\n\nNo AnimationTree selected or tree is empty."
+		return "# NO AnimationTree selected OR tree is empty."
 	
 	var yaml = ""
 	

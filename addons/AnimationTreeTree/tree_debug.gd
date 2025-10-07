@@ -12,7 +12,7 @@ class_name TreeDebug
 # Debug control constants
 const SHOW_FUNCTION = true
 const SHOW_FILE = true
-const SHOW_CODE_SNIPPET = true
+const SHOW_CODE_SNIPPET = false
 const SHOW_LINE_NUMBERS = true
 const CONTEXT_LINES_ABOVE = 6  # Number of lines to show above the current line
 const CONTEXT_LINES_BELOW = 3  # Number of lines to show below the current line

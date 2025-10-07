@@ -10,8 +10,13 @@
 
 # AIManager handles AI-related operations and expert interactions
 class_name FSMExpert extends Expert
-func _init(ai_manager: AIManager) -> void:
+
+var _container:DependencyContainer
+var _current_animation_tree: AnimationTree
+func _init(ai_manager: AIManager, container: DependencyContainer) -> void:
 	name = AIManager.FSM_EXPERT
+	_container = container
+	_current_animation_tree = _container.grab("CurrentAnimationTree")
 	manager = ai_manager
 
 func get_config_fields() -> Array[ConfigField]:
@@ -56,18 +61,17 @@ func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	fsm_agent.system_prompt = system_prompt
 	
 	var temp_conversation: Conversation = Conversation.new()
-	var sample_tools = SampleTools.new()
+	var fsm_tools = FSMExpertTools.new(_container)
 	
-	await con_ai.answer(fsm_agent, temp_conversation, sample_tools, user_input)
+	await con_ai.answer(fsm_agent, temp_conversation, fsm_tools, user_input)
 	var llm_result = temp_conversation.get_last_message("assistant")
 	var all_produced_yaml: Array = manager.extract_block_from_markdown(llm_result, "yaml")
 	
 	
 	if all_produced_yaml.size() > 0:
-		var first_yaml: String = all_produced_yaml[0]
-		var builder: AnimationTreeScriptBuilder = AnimationTreeScriptBuilder.new()
-		print(first_yaml)
-		
-		builder.build_from_script(manager._animation_tree, first_yaml)
-		manager._refresh_callback.call()
+		for yaml in all_produced_yaml:
+			var builder: AnimationTreeScriptBuilder = AnimationTreeScriptBuilder.new()
+			print(yaml)
+			
+			builder.build_from_script(_current_animation_tree, yaml)
 		EditorInterface.mark_scene_as_unsaved()

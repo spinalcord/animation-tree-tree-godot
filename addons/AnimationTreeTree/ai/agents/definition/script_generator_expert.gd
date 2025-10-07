@@ -10,22 +10,18 @@
 
 # AIManager handles AI-related operations and expert interactions
 class_name ScriptGeneratorExpert extends Expert
-func _init(ai_manager: AIManager) -> void:
+
+var _container: DependencyContainer
+
+func _init(ai_manager: AIManager, container: DependencyContainer) -> void:
 	name = AIManager.SCRIPT_EXPERT
 	manager = ai_manager
+	_container = container
 
 func get_config_fields() -> Array[ConfigField]:
 	var fields: Array[ConfigField] = []
 	
-	#fields.append(ConfigField.new(
-	#	"test", 
-	#	"test", 
-	#	"test", 
-	#	"Script Generator Expert", 
-	#	"bool", 
-	#	true
-	#))
-	
+		
 	return fields
 
 func get_system_prompt() -> String:
@@ -33,7 +29,7 @@ func get_system_prompt() -> String:
 
 func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	var script_agent: Agent = Agent.new()
-	var script_expert_tools = ScriptExpertTools.new()
+	var script_expert_tools = ScriptExpertTools.new(_container)
 	
 	script_agent.system_prompt = system_prompt
 	

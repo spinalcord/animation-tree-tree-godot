@@ -82,7 +82,6 @@ AnimationTreeTree works with:
 - Google Gemini
 - Any API that supports OpenAI standard format
 
-
 ## Status
 
 AnimationTreeTree is currently in early development. Contributions and feedback are welcome!

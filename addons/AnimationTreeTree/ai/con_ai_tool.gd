@@ -11,7 +11,10 @@
 # Base class for AI tools with automatic documentation extraction
 class_name ConAITool
 
-func _init():
+var _animation_tree: AnimationTree
+
+func _init(container: DependencyContainer):
+	_animation_tree = container.grab("CurrentAnimationTree")
 	extract_tool_descriptions()
 
 var tool_descriptions: Dictionary = {}

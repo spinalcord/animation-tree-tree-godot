@@ -17,42 +17,37 @@ const SCRIPT_EXPERT = "Script Generator Expert"
 
 var _animation_tree: AnimationTree
 var _target_path: String
-var _selected_paths: Array[String]
-var _get_animations_callback: Callable
-var _get_script_callback: Callable
-var _refresh_callback: Callable
+var _selected_paths: Array[String] # returns every selection in TreeView as a path
+var _selected_parent_paths: Array[String] # returns every selection (that is a parent) in TreeView as a path
+var _all_parent_paths: Array[String] # No matter what: returns all nodes, which can be a parent
+var _current_animations:  Array[String]
+var _current_expression_base_node_script: String
 var _export_manager: ExportManager
 var _experts: Dictionary = {}
 
-
 func _init(feedback_dialog: FeedbackDialog) -> void:
 	self.feedback = feedback_dialog
-	_register_experts()
+	
 
-func _register_experts() -> void:
-	var fsm_expert = FSMExpert.new(self)
-	var script_expert = ScriptGeneratorExpert.new(self)
+func _register_experts(container: DependencyContainer) -> void:
+	var fsm_expert = FSMExpert.new(self, container)
+	var script_expert = ScriptGeneratorExpert.new(self , container)
 	
 	_experts[fsm_expert.name] = fsm_expert
 	_experts[script_expert.name] = script_expert
 
-func execute_ai_action(
-	animation_tree: AnimationTree,
-	target_path: String,
-	selected_paths: Array[String],
-	get_animations_callback: Callable,
-	get_script_callback: Callable,
-	refresh_callback: Callable,
-	export_manager: ExportManager
-) -> String:
-	_animation_tree = animation_tree
-	_target_path = target_path
-	_selected_paths = selected_paths
-	_get_animations_callback = get_animations_callback
-	_get_script_callback = get_script_callback
-	_refresh_callback = refresh_callback
-	_export_manager = export_manager
-		
+func execute_ai_action(container: DependencyContainer) -> String:
+	_animation_tree = container.grab("CurrentAnimationTree")
+	_target_path = container.grab("TargetPath")
+	_current_animations = container.grab("AvaibleAnimations")
+	_selected_parent_paths = container.grab("SelectedNodeParentPaths")
+	_selected_paths = container.grab("SelectedNodePaths")
+	_current_expression_base_node_script = container.grab("CurrentExpressionBaseNodeScript")
+	_all_parent_paths = container.grab("AllNodeParentPaths")
+	_export_manager = ExportManager.new()
+	
+	_register_experts(container)
+	
 	if _animation_tree == null:
 		await feedback.show_info("No AnimationTree selected", "No AnimationTree selected")
 		return ""
@@ -68,18 +63,18 @@ func execute_ai_action(
 	TreeDebug.msg("applayed successfully!")
 	
 	var con_ai: ConAI = ConAI.new()
-	var avaible_types = ",".join(prompt_dialog.get_value("node_type").keys().filter(func(key): return prompt_dialog.get_value("node_type")[key]))
+	var avaible_types: Array[String] = prompt_dialog.get_value("node_type").keys()
 	var expert_type = prompt_dialog.get_value("expert")
 	var user_input: String = prompt_dialog.get_value("prompt")
 	var include_excerpt: bool = prompt_dialog.get_value("include_excerpt")
-	var boilerplat: String = _export_manager.generate_animation_tree_boilerplate(_animation_tree, _selected_paths)
-	var script_content: String = _get_script_callback.call()
+	var boilerplat: String = _export_manager.export_tree_as_boilerplate(_animation_tree, _selected_paths)
+	var script_content: String = _current_expression_base_node_script
 	
 	if user_input.is_empty():
 		return ""
 	
-	if _get_script_callback.call().strip_edges().is_empty() or include_excerpt == false:
-		script_content = "No excerpt provided"
+	if _current_expression_base_node_script.strip_edges().is_empty() or include_excerpt == false:
+		script_content = ""
 	
 	var expert: Expert = _experts.get(expert_type)
 	if expert == null:
@@ -90,13 +85,15 @@ func execute_ai_action(
 	var system_prompt = _build_system_prompt(
 		system_prompt_path,
 		_target_path,
-		_get_animations_callback.call(),
+		_current_animations,
 		script_content,
 		avaible_types,
 		boilerplat,
-		selected_blueprint
+		selected_blueprint,
+		_all_parent_paths
 	)
-	
+	#print(system_prompt)
+	#return ""
 	await expert.process(con_ai, system_prompt, user_input)
 	return ""
 	
@@ -133,10 +130,10 @@ func _create_prompt_dialog() -> ConfigDialog:
 	
 	var warnings: String = ""
 	
-	if (_get_animations_callback.call() as String).strip_edges().is_empty():
+	if _current_animations.size() == 0:
 		warnings += "- Your AnimationPlayer has no animations!\n"
 
-	if _get_script_callback.call().strip_edges().is_empty():
+	if _current_expression_base_node_script.strip_edges().is_empty():
 		warnings += "- Your ExpressionBaseNode Script has no boolean types, therefore State Machine Expert will likely assume expressions."
 	
 	prompt_fields.append(ConfigField.new(
@@ -163,23 +160,30 @@ func _create_prompt_dialog() -> ConfigDialog:
 func _build_system_prompt(
 	system_prompt_path: String,
 	target_path: String,
-	avaible_animations: String,
+	avaible_animations:  Array[String],
 	script_content: String,
-	avaible_types: String,
+	avaible_types: Array[String],
 	boilerplate: String,
-	blueprint: String
+	blueprint: String,
+	avaible_parents: Array[String]
 ) -> String:
-	var systemprompt = _read_file(system_prompt_path)
+	var template = _read_file(system_prompt_path)
+	var _stache: GDStache = GDStache.new()
+	var data = {
+		"script_excerpt": script_content,
+		"has_excerpt": false if script_content.is_empty() else true,
+		"target_path": target_path,
+		"has_animations": true if avaible_animations.size() > 0 else false,
+		"avaible_animations": avaible_animations,
+		"avaible_parents": avaible_parents,
+		"has_parents": true if avaible_parents.size() > 0 else false,
+		"avaible_types": avaible_types,
+		"boilerplate": boilerplate,
+		"blueprint": blueprint,
+		"input_map": InputMap.get_actions()
+	}
 	
-	systemprompt = systemprompt.replace("{{script_excerpt}}", script_content)
-	systemprompt = systemprompt.replace("{{target_path}}", target_path)
-	systemprompt = systemprompt.replace("{{avaible_animations}}", avaible_animations)
-	systemprompt = systemprompt.replace("{{avaible_types}}", avaible_types)
-	systemprompt = systemprompt.replace("{{boilerplate}}", boilerplate)
-	systemprompt = systemprompt.replace("{{blueprint}}", blueprint)
-	systemprompt = systemprompt.replace("{{input_map}}", ",".join(InputMap.get_actions()))
-	
-	return systemprompt
+	return _stache.render(template, data)
 
 func _read_file(file_path: String) -> String:
 	var script_path = ""

@@ -179,19 +179,18 @@ func _shorten_script(content: String) -> String:
 	return "\n".join(result)
 
 
-func get_avaible_animations() -> String:
+func get_avaible_animations() -> Array[String]:
 	if _get_animation_player() == null:
 		await feedback.show_info("Your AnimationTree has no AnimationPlayer. Your AnimationTree needs an AnimationPlayer.", "AnimationPlayer missing")
-		return ""
+		return []
 	
 	var animations = _get_animation_player().get_animation_list()
 
-	var filtered = []
+	var filtered: Array[String] = []
 	for anim in animations:
 		if anim != "RESET":
 			filtered.append(anim)
-	var avaible_animations: String = ",".join(filtered)
-	return avaible_animations
+	return filtered
 
 func extract_block_from_markdown(text: String, block_name: String) -> Array:
 	var regex = RegEx.new()
@@ -210,19 +209,21 @@ func _on_ai_pressed():
 	var target_path: String = ""
 	if selected_item != null:
 		target_path = MetadataUtils.get_path_from_metadata(selected_item.get_metadata(0))
-		target_path = _get_container_path(target_path)
+		target_path = _get_parent_path(target_path)
 	
-	await ai_manager.execute_ai_action(
-		selected_animation_tree,
-		target_path,
-		_get_selected_node_paths(),
-		get_avaible_animations,
-		_get_expression_base_node,
-		_refresh_tree_view,
-		export_manager
-	)
+	var container: DependencyContainer = DependencyContainer.new()
+	container.bind("CurrentAnimationTree", selected_animation_tree)
+	container.bind("TargetPath", target_path)
+	container.bind("AvaibleAnimations", await get_avaible_animations())
+	container.bind("CurrentExpressionBaseNodeScript", _get_expression_base_node())
+	container.bind("SelectedNodePaths", _get_selected_node_paths())
+	container.bind("SelectedNodeParentPaths", _get_selected_node_parent_paths())
+	container.bind("AllNodeParentPaths", _get_all_parents_node_paths())
+
 	
+	await ai_manager.execute_ai_action(container)
 	
+	_refresh_tree_view()
 
 func _ensure_gitignore_exists() -> void:
 	var gitignore_path = AnimationTreeTree.config_path + ".gitignore"
@@ -247,7 +248,6 @@ func _ensure_gitignore_exists() -> void:
 	
 	await feedback.show_info("Gitignore Created", ".gitignore file was created successfully in:\n" + AnimationTreeTree.config_path + ". This will prevent that your API key is visible on commits.")
 
-# Bessere Dialog-Verwaltung - Dialog immer neu erstellen
 func _on_settings_pressed() -> void:
 	_ensure_gitignore_exists()
 	var fields: Array[ConfigField] = []
@@ -360,7 +360,6 @@ func _set_animation_tree(tree: AnimationTree) -> void:
 	ui_manager.enable_controls([buttons.copy_button, buttons.delete_button, buttons.merge_button], true)
 	_refresh_tree_view()
 
-# 5. Füge den neuen Event-Handler hinzu:
 func _on_merge_pressed() -> void:
 	var node_paths = _get_selected_node_paths()
 	if node_paths.size() < 2:
@@ -434,7 +433,59 @@ func _on_boilerplate_pressed() -> void:
 		TreeDebug.msg("No AnimationTree selected")
 		return
 	
-	var boilerplate = await feedback.show_text("Boilerplate", "Boilerplate of selected nodes",export_manager.generate_animation_tree_boilerplate(selected_animation_tree, node_paths), true)
+	var boilerplate = await feedback.show_text("Boilerplate", "Boilerplate of selected nodes",export_manager.export_tree_as_boilerplate(selected_animation_tree, node_paths), true)
+
+
+# Get all container node paths in the entire tree
+func _get_all_parents_node_paths() -> Array[String]:
+	if not selected_animation_tree or not selected_animation_tree.tree_root:
+		return []
+	
+	var container_paths: Array[String] = []
+	var stack: Array = [{"node": selected_animation_tree.tree_root, "path": ""}]
+	
+	while stack.size() > 0:
+		var current = stack.pop_back()
+		var node = current.node
+		var current_path = current.path
+		
+		if not is_instance_valid(node):
+			continue
+		
+		# Check if current node is a container
+		if node is AnimationNodeStateMachine or node is AnimationNodeBlendTree or node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D:
+			if not current_path.is_empty():
+				container_paths.append(current_path)
+			
+			# Get all children and add to stack
+			var children = NodeUtils.get_container_children(node)
+			for child_name in children:
+				var child_path = current_path + "/" + child_name if not current_path.is_empty() else child_name
+				var child_node = NodeUtils.get_node_at_path(selected_animation_tree.tree_root, child_path)
+				if is_instance_valid(child_node):
+					stack.append({"node": child_node, "path": child_path})
+	
+	return container_paths
+
+# Get only selected node paths that are parent nodes
+func _get_selected_node_parent_paths() -> Array[String]:
+	var selected_items = SelectionUtils.get_selected_items(tree_view)
+	var container_paths: Array[String] = []
+	
+	for item in selected_items:
+		var path = MetadataUtils.get_path_from_metadata(item.get_metadata(0))
+		if path.is_empty():
+			continue
+		
+		var node = NodeUtils.get_node_at_path(selected_animation_tree.tree_root, path)
+		if not is_instance_valid(node):
+			continue
+		
+		# Check if node is a parent node
+		if node is AnimationNodeStateMachine or node is AnimationNodeBlendTree or node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D:
+			container_paths.append(path)
+	
+	return container_paths
 
 func _get_selected_node_paths() -> Array[String]:
 	var selected_items = SelectionUtils.get_selected_items(tree_view)
@@ -447,8 +498,6 @@ func _get_selected_node_paths() -> Array[String]:
 	
 	return node_paths
 
-
-
 func update_tree_view_after_operation() -> void:
 	var current_state = state_manager.capture_tree_state(tree_view)
 	await get_tree().process_frame
@@ -458,7 +507,7 @@ func update_tree_view_after_operation() -> void:
 	
 	state_manager.restore_tree_state(tree_view, current_state)
 
-func _get_container_path(path: String) -> String:
+func _get_parent_path(path: String) -> String:
 	if path.is_empty():
 		return path
 	

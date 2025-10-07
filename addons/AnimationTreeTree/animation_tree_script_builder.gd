@@ -31,7 +31,7 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 	_errors.clear()
 	_level_counters.clear()
 	_level_totals.clear()
-	
+	var target_path: String
 	# Parse YAML
 	var parsed = _yaml_parser.from_text(script_text)
 	if parsed == null:
@@ -40,13 +40,38 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 	
 	if not parsed.has("target_path"):
 		_add_error("Script must specify 'target_path'")
-		return false
+	else:
+		target_path = parsed["target_path"]
 	
-	var target_path = parsed["target_path"]
-	var blueprint = parsed.get("Blueprint", {})
+	var blueprint: Dictionary = parsed.get("Blueprint", {})
 	
 	if blueprint.is_empty():
-		_add_error("Script must specify 'Blueprint' node")
+		TreeDebug.msg("Script must specify 'Blueprint' node")
+		return false
+	
+	if blueprint.has("name") == false:
+		if target_path != null:
+			TreeDebug.msg("name key missing AND target_path exists => take last segment of target path for name key" + target_path)
+			if target_path.strip_edges() == "":
+				blueprint["name"] = ""
+			else:
+				blueprint["name"] = target_path.get_file()
+		else:
+			_add_error("name key missing in blueprint.")
+	
+	#if blueprint.has("type") == false:
+	#	_add_error("type key is missing in blueprint")
+	
+	if target_path.get_file() == blueprint.get("name", null):
+		target_path = target_path.get_base_dir()
+		TreeDebug.msg("last target_path segment was identical with blueprint name. target_path changed to " + target_path)
+		
+	if _errors.size() > 0:
+		var error_message = ""
+		for err in _errors:
+			TreeDebug.msg("ERROR:" + err)
+			error_message += "- " + err + "\n"
+		TreeDebug.msg(error_message.strip_edges(), true)
 		return false
 	
 	TreeDebug.msg("=== Building from YAML script ===")
@@ -55,8 +80,7 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 	# Pre-calculate children counts for circular positioning
 	_precalculate_children_counts(target_path, blueprint)
 	# Validate nodes don't already exist
-	if not _validate_nodes_dont_exist(target_path, blueprint):
-		_add_error("ERROR: Build aborted due to existing nodes")
+	throw_out_existing_non_container_nodes(target_path, blueprint) # e.g. idle already exists => throw it out
 	# Validate all animations exist BEFORE building
 	if not _validate_animations(animation_tree, blueprint):
 		_add_error("ERROR: Build aborted due to missing animations. Checkout your blueprint")
@@ -141,18 +165,55 @@ func _get_center_position_for_parent(parent_path: String) -> Vector2:
 # VALIDATION (unchanged)
 # ============================================================================
 
-func _validate_nodes_dont_exist(target_path: String, node_data: Dictionary) -> bool:
-	var existing_nodes: Array[String] = []
-	_collect_existing_nodes(target_path, node_data, existing_nodes)
+func throw_out_existing_non_container_nodes(parent_path: String, node_data: Dictionary) -> void:
+	var node_name = node_data.get("name", "")
 	
-	if not existing_nodes.is_empty():
-		_add_error("Nodes already exist at target path:")
-		for node_name in existing_nodes:
-			_add_error("  - " + node_name)
-		return false
+	if not node_name.is_empty():
+		var full_path = parent_path + "/" + node_name
+		
+		# Check if node exists
+		if _builder.has_node(full_path):
+			var node = _builder.get_node(full_path)
+			
+			# If node is not parentable, remove it from blueprint
+			if not _is_parentable_node(node):
+				TreeDebug.msg("Node \"" + full_path + "\" exists and is not a container - removing from blueprint")
+				node_data.erase("name")  # This effectively removes this node from processing
+				return
+			else:
+				TreeDebug.msg("Node \"" + full_path + "\" exists but is a container, keeping in blueprint")
 	
-	TreeDebug.msg("All nodes validated as non-existing")
-	return true
+	# Process children recursively
+	var children = node_data.get("children", [])
+	if children.is_empty():
+		return
+	
+	var children_to_remove: Array[int] = []
+	
+	for i in range(children.size()):
+		var child_data = children[i]
+		var child_name = child_data.get("name", "")
+		
+		if not child_name.is_empty():
+			var child_full_path = parent_path + "/" + node_name + "/" + child_name
+			
+			if _builder.has_node(child_full_path):
+				var child_node = _builder.get_node(child_full_path)
+				
+				if not _is_parentable_node(child_node):
+					TreeDebug.msg("Child node \"" + child_full_path + "\" exists and is not a container - marking for removal")
+					children_to_remove.append(i)
+					continue
+		
+		# Recursively check this child's children
+		var child_path = parent_path + "/" + node_name if not node_name.is_empty() else parent_path
+		throw_out_existing_non_container_nodes(child_path, child_data)
+	
+	# Remove marked children in reverse order to maintain indices
+	children_to_remove.reverse()
+	for idx in children_to_remove:
+		children.remove_at(idx)
+		TreeDebug.msg("Removed child at index " + str(idx) + " from blueprint")
 
 func _is_parentable_node(node: AnimationNode) -> bool:
 	return node is AnimationNodeStateMachine or node is AnimationNodeBlendTree or node is AnimationNodeBlendSpace1D or node is AnimationNodeBlendSpace2D
@@ -179,6 +240,11 @@ func _collect_existing_nodes(parent_path: String, node_data: Dictionary, existin
 
 func _validate_animations(animation_tree: AnimationTree, node_data: Dictionary) -> bool:
 	var anim_player = _get_animation_player(animation_tree)
+	
+	if animation_tree == null:
+		_add_error("AnimationTree was null")
+		return false
+	
 	if anim_player == null:
 		_add_error("AnimationTree has no AnimationPlayer assigned")
 		return false

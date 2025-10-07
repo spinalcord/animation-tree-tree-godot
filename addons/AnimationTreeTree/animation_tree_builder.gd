@@ -383,28 +383,46 @@ func add_transition(state_machine_path: String, config: Dictionary) -> bool:
 	TreeDebug.msg("Added transition: " + from_state + " -> " + to_state)
 	return true
 
-# Delete a transition
-func delete_transition(state_machine_path: String, from_state: String, to_state: String) -> bool:
+# Delete multiple transitions
+# Each dict in the array should have "from" and "to" keys
+# Example: [{"from": "Idle", "to": "Walk"}, {"from": "Walk", "to": "Run"}]
+func delete_transitions(state_machine_path: String, transitions: Array) -> bool:
 	if not _validate_tree():
-		TreeDebug.msg("Invalid AnimationTree")
+		TreeDebug.msg("Invalid AnimationTree", true)
 		return false
 	
 	var state_machine = _get_node_at_path(state_machine_path)
 	if not state_machine is AnimationNodeStateMachine:
-		TreeDebug.msg("Not a StateMachine: " + state_machine_path)
+		TreeDebug.msg("Not a StateMachine: " + state_machine_path, true)
 		return false
 	
 	var sm = state_machine as AnimationNodeStateMachine
+	var all_success = true
+	var deleted_count = 0
 	
-	if not sm.has_transition(from_state, to_state):
-		TreeDebug.msg("Transition not found: " + from_state + " -> " + to_state)
-		return false
+	for trans_dict in transitions:
+		if not trans_dict.has("from") or not trans_dict.has("to"):
+			TreeDebug.msg("Transition dict must have 'from' and 'to' keys", true)
+			all_success = false
+			continue
+		
+		var from_state = trans_dict["from"]
+		var to_state = trans_dict["to"]
+		
+		if not sm.has_transition(from_state, to_state):
+			TreeDebug.msg("Transition not found: " + from_state + " -> " + to_state, true)
+			all_success = false
+			continue
+		
+		sm.remove_transition(from_state, to_state)
+		deleted_count += 1
+		TreeDebug.msg("Deleted transition: " + from_state + " -> " + to_state)
 	
-	sm.remove_transition(from_state, to_state)
-	_emit_changed(sm)
+	if deleted_count > 0:
+		_emit_changed(sm)
 	
-	TreeDebug.msg("Deleted transition: " + from_state + " -> " + to_state)
-	return true
+	TreeDebug.msg("Deleted " + str(deleted_count) + "/" + str(transitions.size()) + " transitions")
+	return all_success
 
 # Get all transitions for a state machine
 func get_transitions(state_machine_path: String) -> Array[Dictionary]:

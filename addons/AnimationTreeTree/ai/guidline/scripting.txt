@@ -178,11 +178,9 @@ class Inventory:
 #### Very often used annotations
 
 ```gdscript
-@tool # Script runs in editor
 @export var health: int = 100
 @export_range(0, 100) var speed: float = 50.0
 @onready var sprite = $Sprite2D
-@static_unload # Allow script unloading
 ```
 
 ### Enhanced Type System

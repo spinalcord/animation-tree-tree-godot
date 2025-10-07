@@ -116,7 +116,7 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 	# Add tools only if provided
 	if tools != null:
 		body["tools"] = tools.get_structure()
-	
+		TreeDebug.msg(str(body["tools"]))
 	# Smart endpoint building
 	var endpoint_url = base_url
 	if not endpoint_url.ends_with("/completions"):
@@ -157,7 +157,7 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 		var jsonObj: Dictionary = json.data
 		var choice = jsonObj["choices"][0]
 		
-		if choice["finish_reason"] == "length":
+		if choice.has("finish_reason") and choice["finish_reason"] == "length":
 			feedback.close_progress(progress_dialog)
 			# Rollback conversation on error
 			conversation.chain = backup_chain
@@ -166,10 +166,14 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 			assert(false, "Response was truncated by the endpoint! Increase max_tokens.")
 			return
 			
-		choice = choice["message"]
+		choice = choice.get("message", {})
 		
-		var content: String = choice["content"] if choice.has("content") and choice["content"] != null else ""
-		var has_tools_field: bool = choice.has("tool_calls") and choice["tool_calls"] != null
+		var content: String = ""
+		if choice is Dictionary and choice.has("content") and choice["content"] != null:
+			content = str(choice["content"])
+		
+		var has_tools_field: bool = choice is Dictionary and choice.has("tool_calls") and choice["tool_calls"] != null
+
 		
 		var tool_calls: Array = []
 		if has_tools_field:
@@ -241,67 +245,136 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 				TreeDebug.msg("❌ Request cancelled by user")
 				return
 			
-			# Make a new request with the tool results
-			feedback.update_progress(progress_dialog, "Getting final response...")
+			# Multi-step tool calling loop
+			var max_tool_iterations = 5
+			var current_iteration = 0
+			var continue_loop = true
 			
-			var tool_body = {
-				"model": model,
-				"messages": msg_array,
-				"temperature": temperature,
-				"max_tokens": max_tokens
-			}
-			
-			http_request.request(endpoint_url, headers, HTTPClient.METHOD_POST, JSON.stringify(tool_body))
-			var tool_response = await http_request.request_completed
-			
-			if _is_cancelled or not is_instance_valid(progress_dialog) or not progress_dialog.visible:
-				_is_cancelled = true
-				if is_instance_valid(progress_dialog):
-					feedback.close_progress(progress_dialog)
-				conversation.chain = backup_chain
-				conversation.timestamp_last = backup_timestamp_last
-				TreeDebug.msg("❌ Request cancelled by user")
-				return
-			
-			var tool_http_result = tool_response[0]
-			var tool_response_code = tool_response[1]
-			var tool_response_headers = tool_response[2]
-			var tool_body_data = tool_response[3]
-			
-			if tool_http_result == HTTPRequest.Result.RESULT_SUCCESS and tool_response_code == 200:
-				var tool_json = JSON.new()
-				tool_json.parse(tool_body_data.get_string_from_utf8())
-				var tool_jsonObj: Dictionary = tool_json.data
-				var tool_choice = tool_jsonObj["choices"][0]
+			while continue_loop and current_iteration < max_tool_iterations:
+				current_iteration += 1
+				feedback.update_progress(progress_dialog, "Getting response (step " + str(current_iteration) + ")...")
 				
-				if tool_choice["finish_reason"] == "length":
-					feedback.close_progress(progress_dialog)
-					# Rollback conversation on error
+				var tool_body = {
+					"model": model,
+					"messages": msg_array,
+					"temperature": temperature,
+					"max_tokens": max_tokens
+				}
+				
+				# Add tools to allow further tool calls
+				if tools != null:
+					tool_body["tools"] = tools.get_structure()
+				
+				http_request.request(endpoint_url, headers, HTTPClient.METHOD_POST, JSON.stringify(tool_body))
+				var tool_response = await http_request.request_completed
+				
+				if _is_cancelled or not is_instance_valid(progress_dialog) or not progress_dialog.visible:
+					_is_cancelled = true
+					if is_instance_valid(progress_dialog):
+						feedback.close_progress(progress_dialog)
 					conversation.chain = backup_chain
 					conversation.timestamp_last = backup_timestamp_last
-					message_error.emit()
-					assert(false, "Tool response was truncated! Increase max_tokens.")
+					TreeDebug.msg("❌ Request cancelled by user")
 					return
+				
+				var tool_http_result = tool_response[0]
+				var tool_response_code = tool_response[1]
+				var tool_response_headers = tool_response[2]
+				var tool_body_data = tool_response[3]
+				
+				if tool_http_result == HTTPRequest.Result.RESULT_SUCCESS and tool_response_code == 200:
+					var tool_json = JSON.new()
+					tool_json.parse(tool_body_data.get_string_from_utf8())
+					var tool_jsonObj: Dictionary = tool_json.data
+					var tool_choice = tool_jsonObj["choices"][0]
 					
-				tool_choice = tool_choice["message"]
-				var final_content: String = tool_choice["content"]
-				
-				# Add the final answer to conversation
-				conversation.add_message(final_content, "assistant")
-				save_conversation(conversation, "user://conversations/chat.json")
-				
-				feedback.close_progress(progress_dialog)
-				TreeDebug.msg("Response with Tool-Usage 🤖: " + final_content)
-				message_completed.emit(conversation)
-			else:
-				feedback.close_progress(progress_dialog)
-				# Rollback conversation on error
-				conversation.chain = backup_chain
-				conversation.timestamp_last = backup_timestamp_last
-				TreeDebug.msg("Tool request failed. Status: ", tool_response_code)
-				# Support for saving file, need that in other version iterations
-				#save_conversation(conversation, "user://conversations/chat.json")
-				message_error.emit()
+					if tool_choice.has("finish_reason") and tool_choice["finish_reason"] == "length":
+						feedback.close_progress(progress_dialog)
+						conversation.chain = backup_chain
+						conversation.timestamp_last = backup_timestamp_last
+						message_error.emit()
+						assert(false, "Tool response was truncated! Increase max_tokens.")
+						return
+					
+					tool_choice = tool_choice.get("message", {})
+					
+					# Check if there are more tool calls
+					var has_more_tools = tool_choice is Dictionary and tool_choice.has("tool_calls") and tool_choice["tool_calls"] != null
+					var next_tool_calls: Array = []
+					if has_more_tools:
+						next_tool_calls = tool_choice["tool_calls"]
+					
+					if next_tool_calls.size() > 0:
+						print("🔄 AI requested " + str(next_tool_calls.size()) + " more tools (iteration " + str(current_iteration) + ")")
+						
+						# Add assistant message with tool calls
+						var next_assistant_message = {
+							"role": "assistant",
+							"tool_calls": next_tool_calls
+						}
+						msg_array.append(next_assistant_message)
+						conversation.chain.append(next_assistant_message)
+						
+						# Execute all tool calls
+						for tool_call in next_tool_calls:
+							if _is_cancelled or not is_instance_valid(progress_dialog) or not progress_dialog.visible:
+								_is_cancelled = true
+								if is_instance_valid(progress_dialog):
+									feedback.close_progress(progress_dialog)
+								conversation.chain = backup_chain
+								conversation.timestamp_last = backup_timestamp_last
+								TreeDebug.msg("❌ Request cancelled by user")
+								return
+							
+							var tool_id = tool_call["id"]
+							var function_name = tool_call["function"]["name"]
+							var arguments_str = tool_call["function"]["arguments"]
+							var arguments_dict = JSON.parse_string(arguments_str)
+							
+							TreeDebug.msg("Use Tool 🔧: " + function_name + " (iteration " + str(current_iteration) + ")")
+							feedback.update_progress(progress_dialog, "Using tool: " + function_name)
+							
+							tool_called.emit(function_name, arguments_dict)
+							var result = tools.call_tool(function_name, arguments_dict)
+							tool_result.emit(function_name, result)
+							
+							# Add tool result to messages
+							var tool_message = {
+								"role": "tool",
+								"content": str(result),
+								"tool_call_id": tool_id
+							}
+							msg_array.append(tool_message)
+							conversation.chain.append(tool_message)
+						
+						# Continue loop for next iteration
+						continue_loop = true
+					else:
+						# No more tool calls, extract final content
+						var final_content: String = ""
+						if tool_choice is Dictionary and tool_choice.has("content") and tool_choice["content"] != null:
+							final_content = str(tool_choice["content"])
+						
+						# Add the final answer to conversation
+						conversation.add_message(final_content, "assistant")
+						
+						feedback.close_progress(progress_dialog)
+						TreeDebug.msg("Response with Multi-Step Tool-Usage 🤖 (" + str(current_iteration) + " iterations): " + final_content)
+						message_completed.emit(conversation)
+						
+						# Exit loop
+						continue_loop = false
+				else:
+					feedback.close_progress(progress_dialog)
+					conversation.chain = backup_chain
+					conversation.timestamp_last = backup_timestamp_last
+					TreeDebug.msg("Tool request failed. Status: ", tool_response_code)
+					message_error.emit()
+					return
+			
+			# Check if we hit max iterations
+			if current_iteration >= max_tool_iterations:
+				TreeDebug.msg("⚠️ Reached max tool iterations (" + str(max_tool_iterations) + ")")
 		else:
 			# Normal answer without tools
 			conversation.add_message(content, "assistant")

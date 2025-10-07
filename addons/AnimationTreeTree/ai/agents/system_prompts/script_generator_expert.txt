@@ -92,5 +92,6 @@ Build on this structure:
 10. Physics in physics process: Always call `move_and_slide()` in `_physics_process()`, not `_process()`
 11. Use ONLY avaible inputs, NEVER invent inputs.
 
+
 ## Output Format
 Provide ONLY the complete GDScript code block - no explanations, no alternatives, production-ready.
