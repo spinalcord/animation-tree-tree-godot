@@ -36,12 +36,14 @@ var ai_manager: AIManager
 var editor_selection: EditorSelection
 var feedback: FeedbackDialog
 
-func _init() -> void:
-	name = "AnimationTree-Tree"
-	_reload_config()
+func _ready() -> void:
 	_initialize_managers()
 	_create_ui()
 	_setup_auto_detection()
+
+func _init() -> void:
+	name = "AnimationTree-Tree"
+	_reload_config()
 
 func _reload_config():
 	AnimationTreeTree.plugin_config.load(AnimationTreeTree.config_path_with_filename)
