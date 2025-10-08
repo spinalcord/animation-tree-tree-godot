@@ -501,7 +501,7 @@ func _on_blueprint_pressed() -> void:
 		yaml_output = export_manager.export_tree_as_yaml(selected_animation_tree, [])
 	else:
 		yaml_output = export_manager.export_tree_as_yaml(selected_animation_tree, node_paths)
-	await feedback.show_text("YAML Export", "Animation Tree YAML", yaml_output, true)
+	await feedback.show_text("Generated YAML Based on your selection:", "Animation Tree YAML", yaml_output, true)
 
 func _on_boilerplate_pressed() -> void:
 	var node_paths = _get_selected_node_paths()
@@ -509,7 +509,7 @@ func _on_boilerplate_pressed() -> void:
 		TreeDebug.msg("No AnimationTree selected")
 		return
 	
-	var boilerplate = await feedback.show_text("Boilerplate", "Boilerplate of selected nodes",export_manager.export_tree_as_boilerplate(selected_animation_tree, node_paths), true)
+	var boilerplate = await feedback.show_text("This is automatically generated boilerplate based on your selection:", "Boilerplate of selected nodes",export_manager.export_tree_as_boilerplate(selected_animation_tree, node_paths), true)
 
 
 # Get all container node paths in the entire tree

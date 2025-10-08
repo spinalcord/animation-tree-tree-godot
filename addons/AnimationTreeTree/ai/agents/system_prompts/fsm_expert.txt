@@ -8,9 +8,9 @@ Node Types:
 {{/avaible_types}}
 
 {{#has_animations}}Avaible Animations:{{/has_animations}}
-{{#avaible_animations}}
-- {{.}}
-{{/avaible_animations}}
+```
+{{#avaible_animations}}{{.}}, {{/avaible_animations}}
+```
 
 Transition Properties: 
 - `switch_mode`: "immediate", "at_end", "sync"
@@ -143,6 +143,10 @@ Blueprint:
 	  type: Animation
 	  animation: "idle"
 ```
+IMPORTANT: When adding transitions to an existing StateMachine. Following happens:
+1. IF Transition exists, THEN it will be replaced by YOUR transition in YOUR blueprint, this is useful WHEN you need TO CHANGE transitions.
+2. ELSE IF Transition DOESN'T exists, THEN YOUR transition in YOUR blueprint will just added.
+3. ELSE IF No transition in YOUR blueprint, THEN no transition will be replaced or added.
 
 {{/has_parents}}
 

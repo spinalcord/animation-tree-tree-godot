@@ -331,7 +331,8 @@ func add_transition(state_machine_path: String, config: Dictionary) -> bool:
 	
 	# Check if transition already exists
 	if sm.has_transition(from_state, to_state):
-		errors.append("Transition already exists: " + from_state + " -> " + to_state)
+		#errors.append("Transition already exists: " + from_state + " -> " + to_state)
+		delete_transitions(state_machine_path, [{"from": from_state, "to": to_state}]) # By deleting the transition we replace it.
 	
 	# Return result
 	if errors.size() > 0:

@@ -202,8 +202,10 @@ func _restore_transitions(state_machine: AnimationNodeStateMachine, transitions:
 		
 		# Check if transition already exists
 		if state_machine.has_transition(new_from, new_to):
-			TreeDebug.msg("Transition already exists: %s -> %s" % [new_from, new_to])
-			continue
+			#TreeDebug.msg("Transition already exists: %s -> %s" % [new_from, new_to])
+			#continue
+			state_machine.remove_transition(new_from, new_to) # By removing the transition, we replace the transition
+			
 		
 		# Add transition
 		state_machine.add_transition(new_from, new_to, transition)

@@ -79,10 +79,8 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 	TreeDebug.msg("Building root node: " + str(blueprint.get("name", "unnamed")))
 	# Pre-calculate children counts for circular positioning
 	_precalculate_children_counts(target_path, blueprint)
-	# Validate nodes/transitions don't already exist (TODO: We might use a replace logic in the future)
+	# Validate nodes don't already exist
 	throw_out_existing_non_container_nodes(target_path, blueprint) # e.g. idle already exists => throw it out
-	throw_out_existing_transitions(target_path, blueprint) # e.g. "idle -> run" already exists => throw it out
-	
 	# Validate all animations exist BEFORE building
 	if not _validate_animations(animation_tree, blueprint):
 		_add_error("ERROR: Build aborted due to missing animations. Checkout your blueprint")
@@ -166,40 +164,6 @@ func _get_center_position_for_parent(parent_path: String) -> Vector2:
 # ============================================================================
 # VALIDATION (unchanged)
 # ============================================================================
-
-func throw_out_existing_transitions(state_machine_path: String, node_data: Dictionary) -> void:
-	# Only process if this node has transitions defined
-	var transitions = node_data.get("transitions", [])
-	if transitions.is_empty():
-		return
-	
-	# Get the existing state machine
-	var state_machine = _builder.get_node(state_machine_path)
-	if not state_machine is AnimationNodeStateMachine:
-		return
-	
-	var sm = state_machine as AnimationNodeStateMachine
-	var transitions_to_remove: Array[int] = []
-	
-	# Check each transition in blueprint
-	for i in range(transitions.size()):
-		var trans_data = transitions[i]
-		var from_state = trans_data.get("from", "")
-		var to_state = trans_data.get("to", "")
-		
-		if from_state.is_empty() or to_state.is_empty():
-			continue
-		
-		# Check if transition already exists
-		if sm.has_transition(from_state, to_state):
-			TreeDebug.msg("Transition \"" + from_state + " -> " + to_state + "\" already exists in \"" + state_machine_path + "\" - removing from blueprint")
-			transitions_to_remove.append(i)
-	
-	# Remove marked transitions in reverse order to maintain indices
-	transitions_to_remove.reverse()
-	for idx in transitions_to_remove:
-		transitions.remove_at(idx)
-		TreeDebug.msg("Removed transition at index " + str(idx) + " from blueprint")
 
 func throw_out_existing_non_container_nodes(parent_path: String, node_data: Dictionary) -> void:
 	var node_name = node_data.get("name", "")

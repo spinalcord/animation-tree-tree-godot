@@ -13,7 +13,6 @@ extends ConAITool
 # this is a tool class. An agent can use tool to enhance
 # your output tools begin with tool prefix. 
 
-
 ## Returns Godots current scripting guidline.
 func tool_get_godot_scripting_guidline() -> String:
 	var file = FileAccess.open(AnimationTreeTree.plugin_path + "ai/guidline/scripting.txt", FileAccess.READ)
