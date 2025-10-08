@@ -16,8 +16,8 @@ func _init() -> void:
 
 # Add the missing method that calls the boilerplate generator
 func export_tree_as_boilerplate(animation_tree: AnimationTree, selected_paths: Array[String] = []) -> String:
-	if not animation_tree or not animation_tree.tree_root:
-		return "# No Animation Tree\n\nNo AnimationTree selected or tree is empty."
+	#if not animation_tree or not animation_tree.tree_root:
+	#	return ""
 	
 	var state_machines: Array[Dictionary] = []
 	var blend_spaces: Array[Dictionary] = []
@@ -31,8 +31,8 @@ func export_tree_as_boilerplate(animation_tree: AnimationTree, selected_paths: A
 		state_machines = boilerplate_generator.collect_selected_state_machines(animation_tree.tree_root, "", selected_paths)
 		blend_spaces = boilerplate_generator.collect_selected_blend_spaces(animation_tree.tree_root, "", selected_paths)
 	
-	if state_machines.is_empty() and blend_spaces.is_empty():
-		return "# No State Machines or Blend Spaces Found\n\nNo state machines or blend spaces found in selection or tree."
+	#if state_machines.is_empty() and blend_spaces.is_empty():
+	#	return ""
 	
 	var code = ""
 	

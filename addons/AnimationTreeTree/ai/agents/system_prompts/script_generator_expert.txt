@@ -12,7 +12,7 @@ Your job is to implement the GDScript logic that makes these transitions work.
 ## AVAIBLE INPUTS
 
 ```
-{{input_map}}
+{{#input_map}}{{.}},{{/input_map}}
 ```
 
 ## Script Requirements

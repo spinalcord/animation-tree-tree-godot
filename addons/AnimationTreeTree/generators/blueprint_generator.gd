@@ -30,6 +30,12 @@ func format_tree_node_to_yaml(node: AnimationNode, path: String, depth: int, tra
 
 # Build the data structure as Dictionary/Array
 func _build_tree_structure(node: AnimationNode, path: String, transitions_by_path: Dictionary, selected_paths: Array[String]) -> Dictionary:
+	
+	# ("" and "Root") <=> Display all Nodes <=> selected_paths.size() == 0
+	# => we can clear the array <=> The algorithm will return the complete structure.
+	if selected_paths.has("") or selected_paths.has("Root"):
+		selected_paths.clear()
+	
 	var is_selected = selected_paths.is_empty() or _is_path_selected_or_parent(path, selected_paths)
 	var has_selected_children = selected_paths.is_empty() or _has_selected_children(path, selected_paths)
 	

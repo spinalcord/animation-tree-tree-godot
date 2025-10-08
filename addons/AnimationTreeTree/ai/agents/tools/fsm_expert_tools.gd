@@ -14,11 +14,18 @@ extends ConAITool
 
 ## You will likely use this function if USER wants to change something
 ## You can call this function to get the structure of your chosen target_paths
-## IF you choose an empty string as target_path you get the Root structure.
+## IF you choose an empty string as target_path you get the complete AnimationTree
 ## structure.
 ## [param target_paths]: target paths e.g. ["", "StateA/StateB"] returns structure of Root and structure of StateB
 func tool_get_blueprint(target_paths: Array) -> Array[String]:
+	
 	var export_manager: ExportManager = ExportManager.new()
+	
+	# This condition returns the whole tree, we don't need the other paths additionally, this saves expensive context.
+	if target_paths.has("") or target_paths.has("Root"):
+		target_paths.clear()
+		return [export_manager.export_tree_as_yaml(_animation_tree, [])]
+	
 	var return_array: Array[String] = []
 	for target_path in target_paths:
 		var yaml: String = export_manager.export_tree_as_yaml(_animation_tree, [target_path])
@@ -26,7 +33,7 @@ func tool_get_blueprint(target_paths: Array) -> Array[String]:
 		TreeDebug.msg(yaml)
 	return return_array
 
-## Deletes transitions from state machines.
+## Deletes transitions from one or more state machines.
 ## [param target_paths]: Paths to state machines (e.g. ["PlayerAnimationController/GroundState"])
 ## [param transitions]: Array of transitions [{"from": "state1", "to": "state2"}]
 func tool_delete_transitions(target_paths: Array, transitions: Array) -> bool:
@@ -42,4 +49,28 @@ func tool_delete_transitions(target_paths: Array, transitions: Array) -> bool:
 		else:
 			TreeDebug.msg("Failed to delete transitions from %s" % target_path)
 			all_success = false
+	return all_success
+
+## Deletes nodes from the AnimationTree.
+## WARNING: Deleting nodes in StateMachines will also remove all transitions connected to those nodes.
+## [param node_paths]: Array of node paths to delete (e.g. ["PlayerAnimationController/IdleState", "PlayerAnimationController/WalkState"])
+## Returns true if all deletions succeeded, false if any failed.
+## Note: BlendSpace1D/2D points cannot be deleted and must be removed manually in the AnimationTree viewport.
+func tool_delete_nodes(node_paths: Array) -> bool:
+	var tree_builder: AnimationTreeBuilder = AnimationTreeBuilder.new(_animation_tree)
+	var all_success: bool = true
+	var deleted_count: int = 0
+	var failed_count: int = 0
+	
+	for node_path in node_paths:
+		var success: bool = tree_builder.delete_node(node_path)
+		if success:
+			deleted_count += 1
+			TreeDebug.msg("Successfully deleted node: %s" % node_path)
+		else:
+			failed_count += 1
+			TreeDebug.msg("Failed to delete node: %s" % node_path)
+			all_success = false
+	
+	TreeDebug.msg("Deletion summary: %d succeeded, %d failed out of %d total" % [deleted_count, failed_count, node_paths.size()])
 	return all_success

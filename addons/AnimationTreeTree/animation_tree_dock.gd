@@ -120,6 +120,56 @@ func _get_button_config() -> Array:
 
 
 
+func create_backup() -> String:
+	if selected_animation_tree == null or selected_animation_tree.owner == null:
+		return ""
+	if AnimationTreeTree.plugin_config.get_value("settings", "allow_backup", true) == false:
+		return ""
+	
+	var source_path: String = selected_animation_tree.owner.scene_file_path
+	var backup_dir: String = "res://backups/treetree/"
+	# Extract filename without path and extension
+	var filename = source_path.get_file().get_basename()
+	var extension = source_path.get_extension()
+	
+	# Ensure backup directory exists
+	DirAccess.make_dir_recursive_absolute(backup_dir)
+	
+	# Find highest existing backup number
+	var highest_number = 0
+	var dir = DirAccess.open(backup_dir)
+	
+	if dir:
+		dir.list_dir_begin()
+		var file_name = dir.get_next()
+		
+		while file_name != "":
+			if not dir.current_is_dir() and file_name.ends_with("_" + filename + "." + extension):
+				# Extract number from filename (e.g. "00001_Player_show.tscn")
+				var number_str = file_name.split("_")[0]
+				var number = number_str.to_int()
+				if number > highest_number:
+					highest_number = number
+			
+			file_name = dir.get_next()
+		
+		dir.list_dir_end()
+	
+	# Create new backup with next number (5 digits with leading zeros)
+	var next_number = highest_number + 1
+	var backup_filename = "%05d_%s.%s" % [next_number, filename, extension]
+	var backup_path = backup_dir + backup_filename
+	
+	# Copy the file
+	DirAccess.copy_absolute(source_path, backup_path)
+	
+	print("Backup created: ", backup_path)
+	EditorInterface.get_resource_filesystem().scan()
+	return backup_path
+
+# Usage
+var backup_path = create_backup()
+
 func _create_ui() -> void:
 	var components = ui_manager.create_dock_ui(_get_button_config())
 	
@@ -148,6 +198,8 @@ func _get_animation_player() -> AnimationPlayer:
 	return null
 
 func _get_expression_base_node() -> String:
+	if selected_animation_tree == null:
+		return ""
 	var node = selected_animation_tree.get_node(selected_animation_tree.advance_expression_base_node)
 	if node:
 		var current_script = node.get_script()
@@ -221,9 +273,10 @@ func _on_ai_pressed():
 	container.bind("SelectedNodePaths", _get_selected_node_paths())
 	container.bind("SelectedNodeParentPaths", _get_selected_node_parent_paths())
 	container.bind("AllNodeParentPaths", _get_all_parents_node_paths())
+	container.bind("TreeView", tree_view)
 
 	
-	await ai_manager.execute_ai_action(container)
+	await ai_manager.execute_ai_action(container, create_backup)
 	
 	_refresh_tree_view()
 
@@ -254,14 +307,7 @@ func _on_settings_pressed() -> void:
 	_ensure_gitignore_exists()
 	var fields: Array[ConfigField] = []
 	
-	fields.append(ConfigField.new(
-		"debug_everything", 
-		"Detailed Debug Information", 
-		"Output very detailed debug information, what happens.", 
-		"Debug", 
-		"bool", 
-		false
-	))
+
 	
 	fields.append(ConfigField.new(
 		"model", 
@@ -315,6 +361,33 @@ func _on_settings_pressed() -> void:
 		"API Settings", 
 		"string_multi", 
 		""
+	))
+	
+	fields.append(ConfigField.new(
+		"allow_backup", 
+		"Allow Backup", 
+		"This will create a Backup of your scene, where your AnimationTree is, when you are using critical actions (Merge and AI).", 
+		"Backup", 
+		"bool", 
+		true
+	))
+	
+	fields.append(ConfigField.new(
+		"debug_everything", 
+		"Detailed Debug Information", 
+		"Output very detailed debug information, what happens.", 
+		"Debug", 
+		"bool", 
+		false
+	))
+	
+	fields.append(ConfigField.new(
+		"debug_system_prompt", 
+		"Debug System Prompt", 
+		"Outputs the system prompt in the prompt dialog instead of doing ai actions.", 
+		"Debug", 
+		"bool", 
+		false
 	))
 
 	var config_dialog: ConfigDialog = ConfigDialog.new(AnimationTreeTree.config_name, fields)
@@ -371,6 +444,7 @@ func _on_merge_pressed() -> void:
 	if not selected_animation_tree:
 		return
 	
+	create_backup()
 	merge_requested.emit(selected_animation_tree, node_paths)
 
 func _refresh_tree_view() -> void:

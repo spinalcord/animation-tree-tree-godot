@@ -22,7 +22,7 @@ enum Role
 var http_request: HTTPRequest
 
 var model: String = "local-model"
-var temperature: float = 0.7
+var temperature: float = 0.6
 var max_tokens: int = 100000
 var base_url: String = "http://localhost:1234"
 ## Prevents "Context Overflow" with "Sliding Window Algorithm". Affects only the API Message.
@@ -33,7 +33,7 @@ func _init():
 	
 	# Load config values or use defaults
 	model = AnimationTreeTree.plugin_config.get_value("settings", "model", "local-model")
-	temperature = AnimationTreeTree.plugin_config.get_value("settings", "temperature", 0.7)
+	temperature = AnimationTreeTree.plugin_config.get_value("settings", "temperature", 0.6)
 	max_tokens = AnimationTreeTree.plugin_config.get_value("settings", "max_tokens", 60000)
 	base_url = AnimationTreeTree.plugin_config.get_value("settings", "base_url", "http://localhost:1234")
 	context_window_slide_size = AnimationTreeTree.plugin_config.get_value("settings", "context_window_slide_size", 15)

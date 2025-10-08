@@ -288,10 +288,23 @@ func show_text(message: String, title: String, default_text: String = "", multil
 	# Create AcceptDialog instance
 	var dialog = AcceptDialog.new()
 	dialog.title = title
-	dialog.dialog_text = message
+	dialog.dialog_text = ""  # Clear default text to avoid overlap
 	
 	# Add cancel button
 	dialog.add_cancel_button("Cancel")
+	
+	# Create VBoxContainer for content
+	var main_container = VBoxContainer.new()
+	
+	# Add message label
+	var message_label = Label.new()
+	message_label.text = message
+	main_container.add_child(message_label)
+	
+	# Add spacing
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 10)
+	main_container.add_child(spacer)
 	
 	# Create input field based on multiline setting
 	var input_field
@@ -299,13 +312,18 @@ func show_text(message: String, title: String, default_text: String = "", multil
 		input_field = TextEdit.new()
 		input_field.text = default_text
 		input_field.custom_minimum_size = Vector2(300, 100)
+		input_field.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		input_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	else:
 		input_field = LineEdit.new()
 		input_field.text = default_text
 		input_field.custom_minimum_size = Vector2(300, 0)
 	
-	# Add input field to dialog
-	dialog.add_child(input_field)
+	# Add input field to container
+	main_container.add_child(input_field)
+	
+	# Add container to dialog
+	dialog.add_child(main_container)
 	
 	# Register LineEdit for Enter key if single line
 	if not multiline:
@@ -314,7 +332,6 @@ func show_text(message: String, title: String, default_text: String = "", multil
 	# Add dialog to scene tree (required for editor plugins)
 	EditorInterface.get_base_control().add_child(dialog)
 	
-
 	TreeDebug.msg("Showing text input: " + title)
 	
 	# Connect signals with one-shot to prevent multiple emissions

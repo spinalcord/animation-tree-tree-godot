@@ -101,7 +101,6 @@ func add_node(parent_path: String, config: Dictionary) -> bool:
 				node.set(key, config["properties"][key])
 	
 	# Determine name and position
-	# Determine name and position
 	var final_name = config.get("name", _generate_name(node))
 	var final_position = config.get("position", _calculate_position(parent))
 	
@@ -410,7 +409,7 @@ func delete_transitions(state_machine_path: String, transitions: Array) -> bool:
 		var to_state = trans_dict["to"]
 		
 		if not sm.has_transition(from_state, to_state):
-			TreeDebug.msg("Transition not found: " + from_state + " -> " + to_state, true)
+			TreeDebug.msg("Trying to delete transition \"" + from_state + " -> " + to_state + "\" but it was not found.")
 			all_success = false
 			continue
 		

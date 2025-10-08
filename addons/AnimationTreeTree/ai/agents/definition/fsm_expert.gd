@@ -61,12 +61,24 @@ func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	fsm_agent.system_prompt = system_prompt
 	
 	var temp_conversation: Conversation = Conversation.new()
-	var fsm_tools = FSMExpertTools.new(_container)
+	
+	var tree_view: Tree = _container.grab("TreeView")
+	
+	var fsm_tools
+	
+	# WE want the maximum best FIRST ONE-SHOT result...
+	# NO TreeView children means: we don't need tools! Because tool context is very expensive and
+	# can confuse the language model. This will lead to better ONE-SHOT AnimationTree structure results.
+	if tree_view != null and tree_view.get_root() != null and tree_view.get_root().get_first_child() == null:
+		fsm_tools = null
+		print("no tools needed")
+	else:
+		fsm_tools = FSMExpertTools.new(_container)
 	
 	await con_ai.answer(fsm_agent, temp_conversation, fsm_tools, user_input)
-	var llm_result = temp_conversation.get_last_message("assistant")
-	var all_produced_yaml: Array = manager.extract_block_from_markdown(llm_result, "yaml")
 	
+	var llm_result: String = temp_conversation.get_last_message("assistant")
+	var all_produced_yaml: Array = manager.extract_block_from_markdown(llm_result, "yaml")
 	
 	if all_produced_yaml.size() > 0:
 		for yaml in all_produced_yaml:
@@ -75,3 +87,6 @@ func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 			
 			builder.build_from_script(_current_animation_tree, yaml)
 		EditorInterface.mark_scene_as_unsaved()
+	else:
+		# push_error("Language Model didn't generated a sufficient response: ")
+		TreeDebug.msg("AI Response:" + "\n" + llm_result, true)
