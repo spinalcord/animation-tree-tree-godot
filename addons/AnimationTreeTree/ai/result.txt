@@ -1,0 +1,8 @@
+📋 Smart processing clipboard content
+🎯 Target: /home/a7/Desktop/Projekte/a-journey-there-and-back/addons/AnimationTreeTree/ai/con_ai.gd | Log: result.txt
+🚀 Smart processing 1 SEARCH/REPLACE + 0 REGEX/REPLACE = 1 total block(s)
+🎯 Target file: /home/a7/Desktop/Projekte/a-journey-there-and-back/addons/AnimationTreeTree/ai/con_ai.gd
+💾 Created backup: /home/a7/Desktop/Projekte/a-journey-there-and-back/addons/AnimationTreeTree/ai/con_ai.gd.bak
+✅ Block 1: Found 1 match(es) using exact(1)
+🎯 Processing 1 smart + 0 regex = 1 total matches
+✅ Successfully updated /home/a7/Desktop/Projekte/a-journey-there-and-back/addons/AnimationTreeTree/ai/con_ai.gd with 1 changes

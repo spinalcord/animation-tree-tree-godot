@@ -12,6 +12,7 @@
 class_name FSMExpertTools
 extends ConAITool
 
+
 ## You will likely use this function if USER wants to change something
 ## You can call this function to get the structure of your chosen target_paths
 ## IF you choose an empty string as target_path you get the complete AnimationTree

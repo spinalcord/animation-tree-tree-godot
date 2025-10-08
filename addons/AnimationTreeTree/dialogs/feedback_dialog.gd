@@ -198,7 +198,7 @@ func show_pick(message: String, title: String, options: Dictionary[String, bool]
 	
 signal decisions_result(result: Dictionary)
 
-func show_decisions(message: String, title: String, checkboxes: Dictionary[String, bool]) -> Dictionary[String, bool]:
+func show_decisions(message: String, title: String, checkboxes: Dictionary, return_keys: bool = true) -> Dictionary:
 	# Create AcceptDialog instance
 	var dialog = AcceptDialog.new()
 	dialog.title = title
@@ -230,16 +230,29 @@ func show_decisions(message: String, title: String, checkboxes: Dictionary[Strin
 	var checkbox_container = VBoxContainer.new()
 	checkbox_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
-	# Store checkbox references with their IDs
-	var checkbox_nodes: Dictionary[String, CheckBox] = {}
+	# Store checkbox references with their keys and labels
+	var checkbox_nodes: Dictionary = {}
 	
 	# Create checkboxes from input dictionary
-	for checkbox_id in checkboxes.keys():
+	for checkbox_key in checkboxes.keys():
 		var checkbox = CheckBox.new()
-		checkbox.text = checkbox_id.to_pascal_case()
-		checkbox.button_pressed = checkboxes[checkbox_id]
+		var label_text: String
+		var initial_value: bool
+		
+		# Check if value is array [label, bool] or just bool
+		if checkboxes[checkbox_key] is Array:
+			label_text = checkboxes[checkbox_key][0]
+			initial_value = checkboxes[checkbox_key][1]
+		else:
+			label_text = checkbox_key.to_pascal_case()
+			initial_value = checkboxes[checkbox_key]
+		
+		checkbox.text = label_text
+		checkbox.button_pressed = initial_value
 		checkbox_container.add_child(checkbox)
-		checkbox_nodes[checkbox_id] = checkbox
+		
+		# Store with key and label for later retrieval
+		checkbox_nodes[checkbox_key] = {"node": checkbox, "label": label_text}
 	
 	# Add checkbox container to scroll container
 	scroll_container.add_child(checkbox_container)
@@ -258,15 +271,23 @@ func show_decisions(message: String, title: String, checkboxes: Dictionary[Strin
 	# Connect signals with one-shot to prevent multiple emissions
 	dialog.confirmed.connect(func():
 		# Collect checkbox states
-		var result: Dictionary[String, bool] = {}
-		for checkbox_id in checkbox_nodes.keys():
-			result[checkbox_id] = checkbox_nodes[checkbox_id].button_pressed
+		var result: Dictionary = {}
+		for checkbox_key in checkbox_nodes.keys():
+			var node_data = checkbox_nodes[checkbox_key]
+			var pressed = node_data["node"].button_pressed
+			
+			# Return either with key or label based on parameter
+			if return_keys:
+				result[checkbox_key] = pressed
+			else:
+				result[node_data["label"]] = pressed
+		
 		decisions_result.emit(result)
 	, CONNECT_ONE_SHOT)
 	
 	dialog.canceled.connect(func():
 		# Return empty dictionary on cancel
-		var empty_result: Dictionary[String, bool] = {}
+		var empty_result: Dictionary = {}
 		decisions_result.emit(empty_result)
 	, CONNECT_ONE_SHOT)
 	
@@ -283,6 +304,7 @@ func show_decisions(message: String, title: String, checkboxes: Dictionary[Strin
 	dialog.call_deferred("queue_free")
 	
 	return result
+
 
 func show_text(message: String, title: String, default_text: String = "", multiline: bool = false) -> String:
 	# Create AcceptDialog instance

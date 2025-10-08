@@ -35,7 +35,6 @@ func _register_experts(container: DependencyContainer) -> void:
 	
 	_experts[fsm_expert.name] = fsm_expert
 	_experts[script_expert.name] = script_expert
-
 func execute_ai_action(container: DependencyContainer, backup_callable: Callable) -> String:
 	_animation_tree = container.grab("CurrentAnimationTree")
 	_target_path = container.grab("TargetPath")
@@ -63,7 +62,14 @@ func execute_ai_action(container: DependencyContainer, backup_callable: Callable
 	TreeDebug.msg("applayed successfully!")
 	
 	var con_ai: ConAI = ConAI.new()
-	var avaible_types: Array[String] = prompt_dialog.get_value("node_type").keys()
+	
+	var node_type_dict = prompt_dialog.get_value("node_type")
+	print(node_type_dict)
+	var avaible_types: Array[String] = []
+	for key in node_type_dict.keys():
+		if node_type_dict[key] == true:
+			avaible_types.append(key)
+	
 	var expert_type = prompt_dialog.get_value("expert")
 	var user_input: String = prompt_dialog.get_value("prompt")
 	var include_excerpt: bool = prompt_dialog.get_value("include_excerpt")
