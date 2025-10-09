@@ -13,7 +13,7 @@ class_name FSMExpertTools
 extends ConAITool
 
 ## CRITICAL: IF users question is not sufficient, use this tool.
-## ⚠️ ALWAYS call the method were you can get the blueprint with AVAIBLE target_paths FIRST before using this function! ⚠️
+## ⚠️ ALWAYS call the method where you can get the blueprint with AVAIBLE target_paths FIRST before using this function! ⚠️
 ## You need to understand the current AnimationTree structure before asking targeted questions.
 ## Use ONLY YES/NO decisions.
 ## Ask: "Should I ...?" ✓
