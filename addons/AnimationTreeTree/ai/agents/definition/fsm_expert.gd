@@ -54,7 +54,7 @@ func get_config_fields() -> Array[ConfigField]:
 	return fields
 
 func get_system_prompt() -> String:
-	return "fsm_expert.txt"
+	return "fsm_expert.md"
 
 func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	var fsm_agent: Agent = Agent.new()

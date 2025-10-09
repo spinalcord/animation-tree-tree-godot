@@ -28,9 +28,10 @@ var base_url: String = "http://localhost:1234"
 ## Prevents "Context Overflow" with "Sliding Window Algorithm". Affects only the API Message.
 var context_window_slide_size: int = 15
 var api_key: String = ""  # Add this line
+var feedback: FeedbackDialog
 
-func _init():
-	
+func _init(container: DependencyContainer):
+	feedback = container.grab("FeedbackDialog")
 	# Load config values or use defaults
 	model = AnimationTreeTree.plugin_config.get_value("settings", "model", "local-model")
 	temperature = AnimationTreeTree.plugin_config.get_value("settings", "temperature", 0.6)
@@ -79,7 +80,6 @@ func answer(agent: Agent, conversation: Conversation, tools: ConAITool, message:
 ## Internal function to process messages
 func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversation, backup_chain: Array, backup_timestamp_last: float) -> void:
 	# Show progress dialog
-	var feedback = FeedbackDialog.new()
 	var progress_dialog = feedback.show_progress("Sending request to AI...", "Processing", false)
 	
 	var dialog_closed_by_user = false
@@ -223,7 +223,7 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 				tool_called.emit(function_name, arguments_dict)
 				
 				# Execute the tool
-				var result = tools.call_tool(function_name, arguments_dict)
+				var result = await tools.call_tool(function_name, arguments_dict)
 				
 				tool_result.emit(function_name, result)
 				
@@ -335,7 +335,7 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 							feedback.update_progress(progress_dialog, "Using tool: " + function_name)
 							
 							tool_called.emit(function_name, arguments_dict)
-							var result = tools.call_tool(function_name, arguments_dict)
+							var result = await tools.call_tool(function_name, arguments_dict)
 							tool_result.emit(function_name, result)
 							
 							# Add tool result to messages

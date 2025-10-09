@@ -233,6 +233,7 @@ Important: Numeric indexing starts at "0" and represents blend point order, not 
 5. Use ONLY avaible animations, NEVER invent animations, NEVER use a path for an animation attribute (WRONG: `animation: "Ground/walk"`; CORRECT: `animation: "walk"`)
 {{#has_parents}}6. Use function calling to determine if a CONTAINER has already a NON-CONTAINER Type with the same name you want add (e.g. idle). IF you add a NON-CONTAINER Type with the SAME name in the second yaml iteration the operation are going to fail.
 7. You have access to function calling! Some functions for queries need results from previous queries; therefore, you can call functions either in a row to get all information or sequentially.
+8. IF users question is not sufficient, use the ask function calling (if it is avaible)
 {{/has_parents}}
 {{#has_parents}}7. Say `There is nothing to change` IF adding something IS NOT needed. {{/has_parents}}
 
@@ -245,27 +246,16 @@ Blueprint:
 ```
 {{/has_parents}}
 {{#has_parents}}
-for EACH CHANGE provide a SYNTACTICALLY CORRECT markdown YAML BLOCK. 
-NEVER EVER invent target_paths use ONLY this avaible ones CHRACTER for CHARACTER:
-```paths
-""
-{{#avaible_parents}}
-"{{.}}"
-{{/avaible_parents}}
-```
+FOR EACH CHANGE provide a SYNTACTICALLY CORRECT markdown YAML BLOCK. 
+NEVER EVER invent target_paths use ONLY avaible ones CHRACTER for CHARACTER:
 
 ```yaml
-target_path: "{{target_path}}" # IF you want ADD something to the Root
+target_path: "" # IF you want ADD something to the Root
+{{#avaible_parents}}
+# target_path: "{{.}}"
+{{/avaible_parents}}
 Blueprint:
 	Your Result here...
 ```
-
-{{#avaible_parents}}
-```yaml
-target_path: "{{.}}" # IF you want ADD something to {{.}}
-Blueprint:
-	Your Result here...
-```
-{{/avaible_parents}}
 
 {{/has_parents}}

@@ -35,14 +35,17 @@ var export_manager: ExportManager
 var ai_manager: AIManager
 var editor_selection: EditorSelection
 var feedback: FeedbackDialog
+var _container: DependencyContainer 
 
 func _ready() -> void:
 	_initialize_managers()
 	_create_ui()
 	_setup_auto_detection()
 
-func _init() -> void:
+func _init(container: DependencyContainer) -> void:
 	name = "AnimationTree-Tree"
+	_container = container
+	feedback = _container.grab("FeedbackDialog")
 	_reload_config()
 
 func _reload_config():
@@ -53,8 +56,7 @@ func _initialize_managers() -> void:
 	tree_manager = TreeManager.new()
 	state_manager = StateManager.new()
 	export_manager = ExportManager.new()
-	feedback = FeedbackDialog.new()
-	ai_manager = AIManager.new(feedback)
+	ai_manager = AIManager.new(_container)
 
 # Get button configuration with Callables
 func _get_button_config() -> Array:
@@ -265,18 +267,17 @@ func _on_ai_pressed():
 		target_path = MetadataUtils.get_path_from_metadata(selected_item.get_metadata(0))
 		target_path = _get_parent_path(target_path)
 	
-	var container: DependencyContainer = DependencyContainer.new()
-	container.bind("CurrentAnimationTree", selected_animation_tree)
-	container.bind("TargetPath", target_path)
-	container.bind("AvaibleAnimations", await get_avaible_animations())
-	container.bind("CurrentExpressionBaseNodeScript", _get_expression_base_node())
-	container.bind("SelectedNodePaths", _get_selected_node_paths())
-	container.bind("SelectedNodeParentPaths", _get_selected_node_parent_paths())
-	container.bind("AllNodeParentPaths", _get_all_parents_node_paths())
-	container.bind("TreeView", tree_view)
+	_container.bind("CurrentAnimationTree", selected_animation_tree)
+	_container.bind("TargetPath", target_path)
+	_container.bind("AvaibleAnimations", await get_avaible_animations())
+	_container.bind("CurrentExpressionBaseNodeScript", _get_expression_base_node())
+	_container.bind("SelectedNodePaths", _get_selected_node_paths())
+	_container.bind("SelectedNodeParentPaths", _get_selected_node_parent_paths())
+	_container.bind("AllNodeParentPaths", _get_all_parents_node_paths())
+	_container.bind("TreeView", tree_view)
 
 	
-	await ai_manager.execute_ai_action(container, create_backup)
+	await ai_manager.execute_ai_action(_container, create_backup)
 	
 	_refresh_tree_view()
 

@@ -16,6 +16,7 @@ extends EditorPlugin
 var dock: Control
 var clipboard_manager: ClipboardManager
 var feedback: FeedbackDialog
+var container: DependencyContainer
 
 static var config_name: String = ".env"
 static var config_path: String
@@ -37,9 +38,11 @@ func _enter_tree() -> void:
 	
 	# Initialize managers
 	clipboard_manager = ClipboardManager.new()
+	container = DependencyContainer.new()
 	feedback = FeedbackDialog.new()
+	container.bind("FeedbackDialog", feedback)
 	# Add dock
-	dock = AnimationTreeDock.new()
+	dock = AnimationTreeDock.new(container)
 	add_control_to_dock(DOCK_SLOT_LEFT_UL, dock)
 	
 	# Connect signals

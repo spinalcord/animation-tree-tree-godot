@@ -12,6 +12,34 @@
 class_name FSMExpertTools
 extends ConAITool
 
+## CRITICAL: IF users question is not sufficient, use this tool.
+## ⚠️ ALWAYS call the method were you can get the blueprint with AVAIBLE target_paths FIRST before using this function! ⚠️
+## You need to understand the current AnimationTree structure before asking targeted questions.
+## Use ONLY YES/NO decisions.
+## Ask: "Should I ...?" ✓
+## WRONG: "Can you describe your problem?" ✗
+## WRONG: "What do you want to do?" ✗
+## [param questions]: Array of question strings ["Should I x?", "Do you want y?", ...]
+## Returns String with user's answers or empty String if cancelled.
+func tool_ask_user_decisions(questions: Array) -> String:
+	# Convert questions array to dictionary format for show_decisions
+	var checkboxes: Dictionary = {}
+	for i in range(questions.size()):
+		var key = "question_%d" % i
+		checkboxes[key] = [questions[i], false]
+	
+	var result = await _feedback.show_decisions("Your AI-Assistant wants to clarify something:", "Assistant", checkboxes, false)
+	
+	# Convert dictionary result to readable string
+	if result.is_empty():
+		return ""
+	
+	var output: String = ""
+	for question in result.keys():
+		var answer = "YES" if result[question] else "NO"
+		output += question + ": " + answer + "\n"
+	print(output.strip_edges())
+	return output.strip_edges()
 
 ## You will likely use this function if USER wants to change something
 ## You can call this function to get the structure of your chosen target_paths

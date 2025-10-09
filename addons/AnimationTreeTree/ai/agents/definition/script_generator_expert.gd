@@ -24,7 +24,7 @@ func get_config_fields() -> Array[ConfigField]:
 	return fields
 
 func get_system_prompt() -> String:
-	return "script_generator_expert.txt"
+	return "script_generator_expert.md"
 
 func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	var script_agent: Agent = Agent.new()

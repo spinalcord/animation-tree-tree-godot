@@ -25,8 +25,8 @@ var _current_expression_base_node_script: String
 var _export_manager: ExportManager
 var _experts: Dictionary = {}
 
-func _init(feedback_dialog: FeedbackDialog) -> void:
-	self.feedback = feedback_dialog
+func _init(container: DependencyContainer) -> void:
+	feedback = container.grab("FeedbackDialog")
 	
 
 func _register_experts(container: DependencyContainer) -> void:
@@ -61,7 +61,7 @@ func execute_ai_action(container: DependencyContainer, backup_callable: Callable
 	
 	TreeDebug.msg("applayed successfully!")
 	
-	var con_ai: ConAI = ConAI.new()
+	var con_ai: ConAI = ConAI.new(container)
 	
 	var node_type_dict = prompt_dialog.get_value("node_type")
 	print(node_type_dict)
