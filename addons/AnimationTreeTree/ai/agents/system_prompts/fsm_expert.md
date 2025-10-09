@@ -28,7 +28,7 @@ Blueprint:
 ```
 
 {{#has_excerpt}}
-## Excerpt of avaible booleans for Expression
+## Excerpt of the Expression Base Node script
 ```gdscript
 {{script_excerpt}}
 ```

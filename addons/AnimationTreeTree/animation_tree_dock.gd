@@ -215,25 +215,67 @@ func _get_expression_base_node() -> String:
 func _shorten_script(content: String) -> String:
 	var lines = content.split("\n")
 	var result = []
-	var regex = RegEx.new()
-	regex.compile("(->|:)\\s*bool\\s")
+	var in_class = false
+	var class_indent = 0
+	
+	# Regex patterns for different elements
+	var func_regex = RegEx.new()
+	func_regex.compile("^func\\s+\\w+")
+	
+	var void_func_regex = RegEx.new()
+	void_func_regex.compile("->\\s*void\\s*:")
+	
+	var var_regex = RegEx.new()
+	var_regex.compile("^(var|const|@export|@onready)\\s+")
+	
+	var class_regex = RegEx.new()
+	class_regex.compile("^class_name\\s+\\w+")
+	
+	var animation_node_regex = RegEx.new()
+	animation_node_regex.compile(":\\s*AnimationNode")
 	
 	for line in lines:
 		var trimmed = line.strip_edges()
 		
-		# Skip comments
-		if trimmed.begins_with("#"):
+		# Skip empty lines and comments
+		if trimmed.is_empty() or trimmed.begins_with("#"):
 			continue
 		
-		# Check if line is not indented (class level)
-		var current_indent = len(line) - len(line.lstrip("\t"))
+		# Calculate indentation level
+		var indent = len(line) - len(line.lstrip("\t"))
 		
-		# Check if line contains -> bool or : bool
-		if current_indent == 0 and regex.search(line):
+		# Class declaration
+		if class_regex.search(trimmed):
 			result.append(line)
+			in_class = true
+			class_indent = indent
+			continue
+		
+		# Only process top-level (class-level) declarations
+		if indent == 0 or (in_class and indent == class_indent):
+			var clean_line = line
+			
+			# Remove inline comments
+			var comment_pos = line.find("#")
+			if comment_pos != -1:
+				clean_line = line.substr(0, comment_pos).rstrip(" \t")
+			
+			# Skip AnimationNode variables
+			if animation_node_regex.search(clean_line):
+				continue
+			
+			# Skip void functions
+			if func_regex.search(trimmed) and void_func_regex.search(clean_line):
+				continue
+			
+			# Class-level variables and exports
+			if var_regex.search(trimmed):
+				result.append(clean_line)
+			# Function signatures
+			elif func_regex.search(trimmed):
+				result.append(clean_line)
 	
 	return "\n".join(result)
-
 
 func get_avaible_animations() -> Array[String]:
 	if _get_animation_player() == null:
