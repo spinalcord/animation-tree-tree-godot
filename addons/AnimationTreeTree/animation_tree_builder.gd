@@ -383,6 +383,66 @@ func add_transition(state_machine_path: String, config: Dictionary) -> bool:
 	TreeDebug.msg("Added transition: " + from_state + " -> " + to_state)
 	return true
 
+# Delete multiple connections in a BlendTree
+# Each dict in the array should have "to" and "to_input" keys
+# Example: [{"to": "Blend2", "to_input": "in"}, {"to": "output", "to_input": 0}]
+func delete_connections(blendtree_path: String, connections: Array) -> bool:
+	if not _validate_tree():
+		TreeDebug.msg("Invalid AnimationTree", true)
+		return false
+	
+	var blendtree = _get_node_at_path(blendtree_path)
+	if not blendtree is AnimationNodeBlendTree:
+		TreeDebug.msg("Not a BlendTree: " + blendtree_path, true)
+		return false
+	
+	var bt = blendtree as AnimationNodeBlendTree
+	var all_success = true
+	var deleted_count = 0
+	
+	for conn_dict in connections:
+		if not conn_dict.has("to") or not conn_dict.has("to_input"):
+			TreeDebug.msg("Connection dict must have 'to' and 'to_input' keys", true)
+			all_success = false
+			continue
+		
+		var to_node = conn_dict["to"]
+		var to_input = conn_dict["to_input"]
+		
+		# Validate target node exists
+		if to_node != "output" and not is_instance_valid(bt.get_node(to_node)):
+			TreeDebug.msg("Target node does not exist: " + to_node, true)
+			all_success = false
+			continue
+		
+		# Convert input name to index if needed
+		var input_index: int
+		if to_input is String:
+			if to_node == "output":
+				input_index = 0
+			else:
+				var node = bt.get_node(to_node)
+				input_index = _get_input_index_by_name(node, to_input)
+				if input_index == -1:
+					TreeDebug.msg("Invalid input name '" + to_input + "' for node " + to_node, true)
+					all_success = false
+					continue
+		else:
+			input_index = to_input as int
+		
+		# Disconnect the node
+		bt.disconnect_node(to_node, input_index)
+		deleted_count += 1
+		
+		var input_name = _get_input_name_by_index(bt.get_node(to_node) if to_node != "output" else null, input_index)
+		TreeDebug.msg("Deleted connection: " + to_node + "." + input_name)
+	
+	if deleted_count > 0:
+		_emit_changed(bt)
+	
+	TreeDebug.msg("Deleted " + str(deleted_count) + "/" + str(connections.size()) + " connections")
+	return all_success
+
 # Delete multiple transitions
 # Each dict in the array should have "from" and "to" keys
 # Example: [{"from": "Idle", "to": "Walk"}, {"from": "Walk", "to": "Run"}]
@@ -523,6 +583,159 @@ func merge_nodes(node_paths: Array[String], merged_name: String = "MergedStateMa
 	TreeDebug.msg("=== MERGE COMPLETED ===")
 	TreeDebug.msg("Merged " + str(node_names.size()) + " nodes into: " + merged_name)
 	return true
+
+# ============================================================================
+# CONNECTION OPERATIONS (for BlendTree)
+# ============================================================================
+
+# Add a connection between two nodes in a BlendTree
+# Config format:
+# {
+#   "from": "SourceNodeName",
+#   "to": "TargetNodeName" or "output",
+#   "to_input": "in" or 0  # can use name or index
+# }
+func add_connection(blendtree_path: String, config: Dictionary) -> bool:
+	if not _validate_tree():
+		TreeDebug.msg("Invalid AnimationTree", true)
+		return false
+	
+	if not config.has("from") or not config.has("to"):
+		TreeDebug.msg("Connection config must have 'from' and 'to' fields", true)
+		return false
+	
+	var blendtree = _get_node_at_path(blendtree_path)
+	if not blendtree is AnimationNodeBlendTree:
+		TreeDebug.msg("Not a BlendTree: " + blendtree_path, true)
+		return false
+	
+	var bt = blendtree as AnimationNodeBlendTree
+	var from_node = config["from"]
+	var to_node = config["to"]
+	var to_input = config.get("to_input", 0)
+	
+	# Validate source node exists
+	if not is_instance_valid(bt.get_node(from_node)):
+		TreeDebug.msg("Source node does not exist: " + from_node, true)
+		return false
+	
+	# Validate target node exists (output is always valid)
+	if to_node != "output" and not is_instance_valid(bt.get_node(to_node)):
+		TreeDebug.msg("Target node does not exist: " + to_node, true)
+		return false
+	
+	# Convert input name to index if needed
+	var input_index: int
+	if to_input is String:
+		if to_node == "output":
+			input_index = 0
+		else:
+			var target_node = bt.get_node(to_node)
+			input_index = _get_input_index_by_name(target_node, to_input)
+			if input_index == -1:
+				TreeDebug.msg("Invalid input name '" + to_input + "' for node " + to_node, true)
+				return false
+	else:
+		input_index = to_input as int
+	
+	# Validate input_index is within range for target node
+	if to_node != "output":
+		var target_node = bt.get_node(to_node)
+		var max_inputs = _get_node_input_count(target_node)
+		if input_index >= max_inputs:
+			TreeDebug.msg("Input index " + str(input_index) + " out of range for node " + to_node + " (max: " + str(max_inputs - 1) + ")", true)
+			return false
+	
+	# Perform connection
+	bt.connect_node(to_node, input_index, from_node)
+	
+	var input_name = _get_input_name_by_index(bt.get_node(to_node) if to_node != "output" else null, input_index)
+	TreeDebug.msg("Connected: " + from_node + " -> " + to_node + "." + input_name)
+	_emit_changed(bt)
+	return true
+
+# Disconnect a node input in a BlendTree
+func remove_connection(blendtree_path: String, target_node: String, to_input = 0) -> bool:
+	if not _validate_tree():
+		TreeDebug.msg("Invalid AnimationTree", true)
+		return false
+	
+	var blendtree = _get_node_at_path(blendtree_path)
+	if not blendtree is AnimationNodeBlendTree:
+		TreeDebug.msg("Not a BlendTree: " + blendtree_path, true)
+		return false
+	
+	var bt = blendtree as AnimationNodeBlendTree
+	
+	# Validate target node exists
+	if target_node != "output" and not is_instance_valid(bt.get_node(target_node)):
+		TreeDebug.msg("Target node does not exist: " + target_node, true)
+		return false
+	
+	# Convert input name to index if needed
+	var input_index: int
+	if to_input is String:
+		if target_node == "output":
+			input_index = 0
+		else:
+			var node = bt.get_node(target_node)
+			input_index = _get_input_index_by_name(node, to_input)
+			if input_index == -1:
+				TreeDebug.msg("Invalid input name '" + to_input + "' for node " + target_node, true)
+				return false
+	else:
+		input_index = to_input as int
+	
+	bt.disconnect_node(target_node, input_index)
+	
+	var input_name = _get_input_name_by_index(bt.get_node(target_node) if target_node != "output" else null, input_index)
+	TreeDebug.msg("Disconnected: " + target_node + "." + input_name)
+	_emit_changed(bt)
+	return true
+
+# Get input name by index for a node
+func _get_input_name_by_index(node: AnimationNode, index: int) -> String:
+	if node == null:
+		return str(index)
+	
+	if node.has_method("get_input_name"):
+		return node.get_input_name(index)
+	
+	return str(index)
+
+# Get input index by name for a node
+func _get_input_index_by_name(node: AnimationNode, input_name: String) -> int:
+	if not is_instance_valid(node):
+		return -1
+	
+	var input_count = _get_node_input_count(node)
+	
+	for i in range(input_count):
+		if node.has_method("get_input_name"):
+			if node.get_input_name(i) == input_name:
+				return i
+	
+	return -1
+
+# Get number of inputs for a specific node type
+func _get_node_input_count(node: AnimationNode) -> int:
+	if not is_instance_valid(node):
+		return 0
+	
+	# Use built-in method if available
+	if node.has_method("get_input_count"):
+		return node.get_input_count()
+	
+	# Fallback for known types
+	if node is AnimationNodeBlend2 or node is AnimationNodeOneShot or node is AnimationNodeAdd2 or node is AnimationNodeSub2:
+		return 2
+	elif node is AnimationNodeBlend3 or node is AnimationNodeAdd3:
+		return 3
+	elif node is AnimationNodeTimeScale or node is AnimationNodeTimeSeek:
+		return 1
+	
+	# Container nodes and Animation nodes have 0 inputs
+	return 0
 
 # ============================================================================
 # UTILITY / QUERY OPERATIONS
@@ -737,12 +950,31 @@ func _emit_changed(node: AnimationNode) -> void:
 
 func _extract_blend_connections(bt: AnimationNodeBlendTree, node_name: String) -> Array[Dictionary]:
 	var connections: Array[Dictionary] = []
-	# Placeholder for BlendTree connections
+	
+	# Note: Godot's BlendTree API doesn't provide a way to query connections directly
+	# We would need to track connections separately or use reflection to find them
+	# For now, we'll just return an empty array
+	TreeDebug.msg("Warning: Cannot extract BlendTree connections - API limitation")
+	
 	return connections
 
 func _restore_blend_connections(bt: AnimationNodeBlendTree, connections: Array[Dictionary], old_name: String, new_name: String) -> void:
-	# Placeholder for restoring connections
-	pass
+	# Restore connections with updated node name
+	for conn in connections:
+		var from_node = conn.get("from", "")
+		var to_node = conn.get("to", "")
+		var input_index = conn.get("input_index", 0)
+		
+		# Replace old name with new name
+		if from_node == old_name:
+			from_node = new_name
+		if to_node == old_name:
+			to_node = new_name
+		
+		# Reconnect
+		bt.connect_node(to_node, input_index, from_node)
+		TreeDebug.msg("Restored connection: " + from_node + " -> " + to_node + "[" + str(input_index) + "]")
+
 
 func _collect_merge_transition_data(sm: AnimationNodeStateMachine, node_names: Array[String]) -> Dictionary:
 	var internal: Array[Dictionary] = []

@@ -49,6 +49,7 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 		TreeDebug.msg("Script must specify 'Blueprint' node")
 		return false
 	
+	#region apply blueprint conventions
 	if blueprint.has("name") == false:
 		if target_path != null:
 			TreeDebug.msg("name key missing AND target_path exists => take last segment of target path for name key" + target_path)
@@ -58,14 +59,20 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 				blueprint["name"] = target_path.get_file()
 		else:
 			_add_error("name key missing in blueprint.")
-	
-	#if blueprint.has("type") == false:
-	#	_add_error("type key is missing in blueprint")
+	else:
+		if target_path.strip_edges() == "":
+			var current_blueprint_name: String = (blueprint["name"] as String).to_lower()
+			if current_blueprint_name == "root":
+				blueprint["name"] = ""
 	
 	if target_path.get_file() == blueprint.get("name", null):
 		target_path = target_path.get_base_dir()
 		TreeDebug.msg("last target_path segment was identical with blueprint name. target_path changed to " + target_path)
-		
+	#endregion
+			
+	#if blueprint.has("type") == false:
+	#	_add_error("type key is missing in blueprint")
+	
 	if _errors.size() > 0:
 		var error_message = ""
 		for err in _errors:
@@ -96,6 +103,17 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 	# Build the root node
 	if not _build_node(target_path, blueprint):
 		return false
+	
+	# Build connections if this is a BlendTree and has connections
+	var connections = blueprint.get("connections", [])
+	if not connections.is_empty():
+		TreeDebug.msg("=== Building connections ===")
+		var node_path = target_path
+		if not blueprint.get("name", "").is_empty():
+			node_path = target_path + "/" + blueprint.get("name")
+		
+		if not _build_connections(node_path, connections):
+			return false
 	
 	TreeDebug.msg("=== Build completed successfully ===")
 	return true
@@ -288,18 +306,18 @@ func get_errors() -> Array[String]:
 # BUILDING (modified for circular positioning)
 # ============================================================================
 
-
 func _build_node(parent_path: String, node_data: Dictionary, parent_node: AnimationNode = null) -> bool:
 	var node_name = node_data.get("name", "")
 	var node_type = node_data.get("type", "Animation")
 	var animation = node_data.get("animation", "")
 	var children = node_data.get("children", [])
 	var transitions = node_data.get("transitions", [])
+	var connections = node_data.get("connections", [])  # Add this line
 	
 	# Extract additional properties
 	var properties = {}
 	for key in node_data:
-		if key not in ["name", "type", "animation", "children", "transitions", "path"]:
+		if key not in ["name", "type", "animation", "children", "transitions", "connections", "path"]:  # Add "connections" here
 			properties[key] = node_data[key]
 	
 	TreeDebug.msg("Building node: " + node_name + " (" + node_type + ") at " + parent_path)
@@ -395,7 +413,15 @@ func _build_node(parent_path: String, node_data: Dictionary, parent_node: Animat
 				if not _build_transition(node_path, transition_data):
 					return false
 	
+	# Build connections if this is a BlendTree (ADD THIS SECTION)
+	if (node_type == "BlendTree" or node_type == "AnimationNodeBlendTree") and not connections.is_empty():
+		TreeDebug.msg("Building " + str(connections.size()) + " connections for " + node_name)
+		var node_path = parent_path + "/" + node_name
+		if not _build_connections(node_path, connections):
+			return false
+	
 	return true
+
 
 func _build_node_direct(parent_node: AnimationNode, node_data: Dictionary) -> bool:
 	var node_name = node_data.get("name", "")
@@ -588,5 +614,40 @@ func _build_transition(state_machine_path: String, transition_data: Dictionary) 
 	
 	return true
 
+# ============================================================================
+# CONNECTION BUILDING
+# ============================================================================
+
+func _build_connections(blendtree_path: String, connections: Array) -> bool:
+	var success = true
+	var connection_count = 0
+	
+	for connection_data in connections:
+		if not connection_data is Dictionary:
+			_add_error("Connection must be a Dictionary")
+			success = false
+			continue
+		
+		if not connection_data.has("from") or not connection_data.has("to"):
+			_add_error("Connection must have 'from' and 'to' fields")
+			success = false
+			continue
+		
+		var from_node = connection_data["from"]
+		var to_node = connection_data["to"]
+		var to_input = connection_data.get("to_input", connection_data.get("input_index", 0))
+		
+		var input_display = str(to_input) if to_input is int else "'" + to_input + "'"
+		TreeDebug.msg("Building connection: " + from_node + " -> " + to_node + "." + input_display)
+		
+		if not _builder.add_connection(blendtree_path, connection_data):
+			_add_error("Failed to create connection: " + from_node + " -> " + to_node)
+			success = false
+		else:
+			connection_count += 1
+	
+	TreeDebug.msg("Built " + str(connection_count) + "/" + str(connections.size()) + " connections")
+	return success
+	
 func _add_error(message: String) -> void:
 	_errors.append(message)

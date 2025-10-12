@@ -2,29 +2,26 @@
 
 # AnimationTreeTree
 
-AI-powered animation tree generator for Godot Engine. With other cool functions like copy/paste/merge AnimationTree nodes.
+AI-powered animation tree generator for Godot Engine. With other cool functions like copy/paste/merge AnimationTree nodes. 
 
 ## What is AnimationTreeTree?
 
-AnimationTreeTree is a Godot addon that uses AI to generate complete animation state machines with sub-states, transitions, and controller scripts. The name comes from creating a "virtual tree" of your actual animation tree.
+AnimationTreeTree is a Godot addon that uses AI to generate complete animation state machines with sub-states, transitions, blend trees (with connections!) and controller scripts. The name comes from creating a "virtual tree" of your actual animation tree.
 
 ## Important Notes ⚠️
 
 > [!WARNING]
-> **No undo support yet** - Make sure to backup your project before using AnimationTreeTree
+> **No undo support** - This plugin has no undo support but built-in backup (saved in: `res://backup/treetree`).
 
 ## Features
 
-> [!NOTE]
-> This is an early-phase hobby project. More experts and features/improvements are planned for the future.
-
 ### State Machine Generator
-- Creates complete animation state machines with nested sub-states
+- Creates complete animation state machines with nested sub-states and blend trees
 - Automatically sets up transitions between states
-- Supports animation nodes and blend trees (blend tree connections coming soon)
+- Supports animation nodes and blend trees
 
 ### Script Generator
-- Generates controller scripts based on your selected nodes
+- Generates controller scripts based on your selected nodes 
 - Creates boilerplate code using algorithms
 - Uses AI to fill in the logic based on your animation tree structure
 - Supports tool calling for better results
@@ -50,7 +47,7 @@ AnimationTreeTree includes custom tool calling logic that helps the AI:
 
 # Additional Features
 
-### Merge ⚠️
+### Merge
 Merge multiple nodes into a single state machine
 
 <img src="screenshots/4.gif" width="400">  

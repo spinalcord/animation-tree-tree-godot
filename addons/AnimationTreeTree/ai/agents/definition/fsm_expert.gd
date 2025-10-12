@@ -45,7 +45,7 @@ func get_config_fields() -> Array[ConfigField]:
 	fields.append(ConfigField.new(
 		"include_excerpt", 
 		"Include Expression Excerpt", 
-		"Includes an excerpt (Only booleans) of your \"Advance Expression Base Node\" attached script assigned to your AnimationTree.", 
+		"Includes an excerpt of your \"Advance Expression Base Node\" attached script assigned to your AnimationTree.", 
 		"State Machine Expert", 
 		"bool", 
 		true

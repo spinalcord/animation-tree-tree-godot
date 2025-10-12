@@ -12,8 +12,8 @@
 class_name FSMExpertTools
 extends ConAITool
 
-## CRITICAL: IF users question is not sufficient, use this tool.
-## ⚠️ ALWAYS call the method where you can get the blueprint with AVAIBLE target_paths FIRST before using this function! ⚠️
+## CRITICAL: IF users question is not sufficient OR you are not sure what to do, use this tool.
+## ALWAYS call the method where you can get the blueprint with AVAIBLE target_paths FIRST before using this function!
 ## You need to understand the current AnimationTree structure before asking targeted questions.
 ## Use ONLY YES/NO decisions.
 ## Ask: "Should I ...?" ✓
@@ -102,4 +102,24 @@ func tool_delete_nodes(node_paths: Array) -> bool:
 			all_success = false
 	
 	TreeDebug.msg("Deletion summary: %d succeeded, %d failed out of %d total" % [deleted_count, failed_count, node_paths.size()])
+	return all_success
+
+## Deletes connections from one or more BlendTrees.
+## [param target_paths]: Paths to BlendTrees (e.g. ["SomeController/SomeBlendTree"])
+## [param connections]: Array of connections [{"to": "node_name", "to_input": "in"}]
+## Returns true if all deletions succeeded, false if any failed.
+func tool_delete_connections(target_paths: Array, connections: Array) -> bool:
+	print(target_paths)
+	print(connections)
+	var tree_builder: AnimationTreeBuilder = AnimationTreeBuilder.new(_animation_tree)
+	var all_success: bool = true
+	
+	for target_path in target_paths:
+		var success: bool = tree_builder.delete_connections(target_path, connections)
+		if success:
+			TreeDebug.msg("Successfully deleted %d connection(s) from %s" % [connections.size(), target_path])
+		else:
+			TreeDebug.msg("Failed to delete connections from %s" % target_path)
+			all_success = false
+	
 	return all_success

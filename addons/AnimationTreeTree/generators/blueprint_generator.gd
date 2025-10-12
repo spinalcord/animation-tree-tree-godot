@@ -77,6 +77,12 @@ func _build_tree_structure(node: AnimationNode, path: String, transitions_by_pat
 			if not transitions_array.is_empty():
 				node_data["transitions"] = transitions_array
 	
+	# Add connections if this is a BlendTree
+	if node is AnimationNodeBlendTree:
+		var connections_array = _get_blend_tree_connections(node as AnimationNodeBlendTree)
+		if not connections_array.is_empty():
+			node_data["connections"] = connections_array
+	
 	# Wrap root in Blueprint
 	if path.is_empty():
 		return {"Blueprint": node_data}
@@ -249,3 +255,37 @@ func _get_node_name_from_path(path: String) -> String:
 		return ""
 	var parts = path.split("/")
 	return parts[parts.size() - 1]
+
+# Extract connections from a BlendTree node
+func _get_blend_tree_connections(blend_tree: AnimationNodeBlendTree) -> Array[Dictionary]:
+	var connections: Array[Dictionary] = []
+	
+	# BlendTree stores connections in format: [to_node, to_input_port, from_node, ...]
+	var node_connections = blend_tree.get("node_connections")
+	
+	if node_connections is Array:
+		var i = 0
+		while i + 2 < node_connections.size():
+			var to_node = node_connections[i]
+			var to_input_idx = node_connections[i + 1]
+			var from_node = node_connections[i + 2]
+			
+			# Get input name instead of index if possible
+			var to_input_name = str(to_input_idx)
+			
+			if to_node == "output":
+				to_input_name = "in"
+			else:
+				var target_node = NodeUtils.get_blend_tree_node(blend_tree, to_node)
+				if target_node and target_node.has_method("get_input_name"):
+					to_input_name = target_node.get_input_name(to_input_idx)
+			
+			connections.append({
+				"from": str(from_node),
+				"to": str(to_node),
+				"to_input": to_input_name
+			})
+			
+			i += 3
+	
+	return connections

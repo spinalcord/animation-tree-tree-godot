@@ -117,6 +117,7 @@ func _get_button_config() -> Array:
 			"handler": _on_ai_pressed,
 			"disabled": false
 		}
+		
 				
 	]
 
@@ -130,6 +131,8 @@ func create_backup() -> String:
 	
 	var source_path: String = selected_animation_tree.owner.scene_file_path
 	var backup_dir: String = "res://backups/treetree/"
+	var max_backups: int = AnimationTreeTree.plugin_config.get_value("settings", "max_backup_count", 10)
+	
 	# Extract filename without path and extension
 	var filename = source_path.get_file().get_basename()
 	var extension = source_path.get_extension()
@@ -137,8 +140,8 @@ func create_backup() -> String:
 	# Ensure backup directory exists
 	DirAccess.make_dir_recursive_absolute(backup_dir)
 	
-	# Find highest existing backup number
-	var highest_number = 0
+	# Collect all existing backups with their numbers
+	var existing_backups: Array[Dictionary] = []
 	var dir = DirAccess.open(backup_dir)
 	
 	if dir:
@@ -150,15 +153,32 @@ func create_backup() -> String:
 				# Extract number from filename (e.g. "00001_Player_show.tscn")
 				var number_str = file_name.split("_")[0]
 				var number = number_str.to_int()
-				if number > highest_number:
-					highest_number = number
+				existing_backups.append({
+					"number": number,
+					"filename": file_name,
+					"path": backup_dir + file_name
+				})
 			
 			file_name = dir.get_next()
 		
 		dir.list_dir_end()
 	
+	# Sort backups by number (ascending)
+	existing_backups.sort_custom(func(a, b): return a.number < b.number)
+	
+	# Delete oldest backups if limit is reached
+	while existing_backups.size() >= max_backups:
+		var oldest = existing_backups[0]
+		DirAccess.remove_absolute(oldest.path)
+		print("Deleted old backup: ", oldest.filename)
+		existing_backups.remove_at(0)
+	
+	# Determine next backup number
+	var next_number = 1
+	if existing_backups.size() > 0:
+		next_number = existing_backups[-1].number + 1
+	
 	# Create new backup with next number (5 digits with leading zeros)
-	var next_number = highest_number + 1
 	var backup_filename = "%05d_%s.%s" % [next_number, filename, extension]
 	var backup_path = backup_dir + backup_filename
 	
@@ -413,6 +433,15 @@ func _on_settings_pressed() -> void:
 		"Backup", 
 		"bool", 
 		true
+	))
+	
+	fields.append(ConfigField.new(
+	"max_backup_count", 
+	"Max Backup Count", 
+	"Maximum number of backups to keep (sliding window). Oldest backups will be deleted automatically.", 
+	"Backup", 
+	"int", 
+	[2, 6, 20]
 	))
 	
 	fields.append(ConfigField.new(

@@ -150,6 +150,47 @@ IMPORTANT: When adding transitions to an existing StateMachine. Following happen
 
 {{/has_parents}}
 
+## BlendTree Nodes
+- Output Node: Every BlendTree has an output node created by default
+- Data Flow: Animation data flows from source nodes -> processing nodes -> output
+- Graph Structure: Nodes are connected via inputs and outputs to form a processing graph
+
+### Available Input Names
+- Blend2: in, blend
+- Blend3: -blend, in, +blend
+- Add2: in, add
+- Add3: -add, in, +add
+- Sub2: in, sub
+- OneShot: in, shot
+- TimeScale/TimeSeek: in
+
+### Basic Example
+```yaml
+target_path: ""
+Blueprint:
+  type: BlendTree
+  children:
+    - name: IdleAnim
+      type: Animation
+      animation: "idle"
+    - name: WalkAnim
+      type: Animation
+      animation: "walk"
+    - name: MovementBlend
+      type: Blend2
+  connections:
+    # Connect animations to blend node
+    - from: IdleAnim
+      to: MovementBlend
+      to_input: "in"
+    - from: WalkAnim
+      to: MovementBlend
+      to_input: "blend"
+    - from: MovementBlend # CRITICAL: Connect to output (If there is no connection to output)
+      to: output
+      to_input: "in"
+```
+
 ## BlendSpace Nodes
 BlendSpace Children are numerically indexed as strings ("0", "1", "2", ...)
 
@@ -231,9 +272,10 @@ Important: Numeric indexing starts at "0" and represents blend point order, not 
 	- IF script excerpt is provided and sufficient: Use avaible booleans from the excerpt for expressions.
 	- ELSE Script excerpt is NOT provided OR not sufficient to create the transitions: Make Expressions that make logical sense. Another Agent will implementent the Script latter.
 5. Use ONLY avaible animations, NEVER invent animations, NEVER use a path for an animation attribute (WRONG: `animation: "Ground/walk"`; CORRECT: `animation: "walk"`)
-{{#has_parents}}6. Use function calling to determine if a CONTAINER has already a NON-CONTAINER Type with the same name you want add (e.g. idle). IF you add a NON-CONTAINER Type with the SAME name in the second yaml iteration the operation are going to fail.
-7. You have access to function calling! Some functions for queries need results from previous queries; therefore, you can call functions either in a row to get all information or sequentially.
-8. IF users question is not sufficient, use the ask function calling (if it is avaible)
+6. BlendTree Rules: At least one node must connect to output (or nothing plays), disconnected nodes are ignored, all children are created before connections
+{{#has_parents}}7. Use function calling to determine if a CONTAINER has already a NON-CONTAINER Type with the same name you want add (e.g. idle). IF you add a NON-CONTAINER Type with the SAME name in the second yaml iteration the operation are going to fail.
+8. You have access to function calling! Some functions for queries need results from previous queries; therefore, you can call functions either in a row to get all information or sequentially.
+9. IF users question is not sufficient, use the ask function calling (if it is avaible)
 {{/has_parents}}
 {{#has_parents}}7. Say `There is nothing to change` IF adding something IS NOT needed. {{/has_parents}}
 
