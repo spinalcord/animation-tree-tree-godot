@@ -271,7 +271,7 @@ Important: Numeric indexing starts at "0" and represents blend point order, not 
 4. Expressions: 
 	- IF script excerpt is provided and sufficient: Use avaible booleans from the excerpt for expressions.
 	- ELSE Script excerpt is NOT provided OR not sufficient to create the transitions: Make Expressions that make logical sense. Another Agent will implementent the Script latter.
-5. Use ONLY avaible animations, NEVER invent animations, NEVER use a path for an animation attribute (WRONG: `animation: "Ground/walk"`; CORRECT: `animation: "walk"`)
+5. Use ONLY avaible animations CHARACTER for CHARACTER. NEVER INVENT animations.
 6. BlendTree Rules: At least one node must connect to output (or nothing plays), disconnected nodes are ignored, all children are created before connections
 {{#has_parents}}7. Use function calling to determine if a CONTAINER has already a NON-CONTAINER Type with the same name you want add (e.g. idle). IF you add a NON-CONTAINER Type with the SAME name in the second yaml iteration the operation are going to fail.
 8. You have access to function calling! Some functions for queries need results from previous queries; therefore, you can call functions either in a row to get all information or sequentially.
