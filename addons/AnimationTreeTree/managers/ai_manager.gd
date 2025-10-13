@@ -10,7 +10,7 @@
 
 ## AIManager handles AI-related operations and expert interactions
 class_name AIManager
-var feedback: FeedbackDialog
+var feedback: FeedbackDialog = FeedbackDialog.new()
 
 const FSM_EXPERT = "State Machine Generator Expert"
 const SCRIPT_EXPERT = "Script Generator Expert"
@@ -25,8 +25,8 @@ var _current_expression_base_node_script: String
 var _export_manager: ExportManager
 var _experts: Dictionary = {}
 
-func _init(container: DependencyContainer) -> void:
-	feedback = container.grab("FeedbackDialog")
+func _init() -> void:
+	pass
 	
 
 func _register_experts(container: DependencyContainer) -> void:
@@ -150,7 +150,7 @@ func _create_prompt_dialog() -> ConfigDialog:
 		warnings += "- Your AnimationPlayer has no animations!\n"
 
 	if _current_expression_base_node_script.strip_edges().is_empty():
-		warnings += "- Your ExpressionBaseNode Script has no boolean types, therefore State Machine Expert will likely assume expressions."
+		warnings += "- Your ExpressionBaseNode Scripts is not sufficient, therefore State Machine Expert will likely assume expressions (Because there is no other way)."
 	
 	prompt_fields.append(ConfigField.new(
 		"target_info", 

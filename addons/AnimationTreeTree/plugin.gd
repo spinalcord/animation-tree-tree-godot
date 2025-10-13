@@ -38,11 +38,8 @@ func _enter_tree() -> void:
 	
 	# Initialize managers
 	clipboard_manager = ClipboardManager.new()
-	container = DependencyContainer.new()
 	feedback = FeedbackDialog.new()
-	container.bind("FeedbackDialog", feedback)
-	# Add dock
-	dock = AnimationTreeDock.new(container)
+	dock = AnimationTreeDock.new()
 	add_control_to_dock(DOCK_SLOT_LEFT_UL, dock)
 	
 	# Connect signals

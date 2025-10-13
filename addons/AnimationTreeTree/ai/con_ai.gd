@@ -28,10 +28,9 @@ var base_url: String = "http://localhost:1234"
 ## Prevents "Context Overflow" with "Sliding Window Algorithm". Affects only the API Message.
 var context_window_slide_size: int = 15
 var api_key: String = ""  # Add this line
-var feedback: FeedbackDialog
+var feedback: FeedbackDialog = FeedbackDialog.new()
 
 func _init(container: DependencyContainer):
-	feedback = container.grab("FeedbackDialog")
 	# Load config values or use defaults
 	model = AnimationTreeTree.plugin_config.get_value("settings", "model", "local-model")
 	temperature = AnimationTreeTree.plugin_config.get_value("settings", "temperature", 0.6)
