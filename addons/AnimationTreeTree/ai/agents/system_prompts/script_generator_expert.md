@@ -90,7 +90,7 @@ Build on this structure:
 8. Add minimal comments: Only explain non-obvious logic (comments must be in English)
 9. Use proper Node methods: Only call Node-specific functions like `move_and_slide()` in classes that inherit from Node
 10. Physics in physics process: Always call `move_and_slide()` in `_physics_process()`, not `_process()`
-11. Use ONLY avaible inputs, NEVER invent inputs.
+11. Use ONLY avaible inputs, NEVER EVER invent or assume inputs that are NOT avaible, use only AVAIBLE inputs CHRACTER for CHARACTER! WRONG: `Input.is_action_just_pressed('xyz')` xyz does not exists in the AVAIBLE inputs.
 
 
 ## Output Format

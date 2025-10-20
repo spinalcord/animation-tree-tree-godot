@@ -243,6 +243,8 @@ func generate_complete_boilerplate(state_machines: Array[Dictionary], blend_spac
 	
 	# _ready function
 	code += "func _ready() -> void:\n"
+	code += "\tassert(anim_tree != null, \"AnimationTree was not assigned\")\n"
+	code += "\tassert(anim_player != null, \"AnimationPlayer was not assigned\")\n"
 	code += "\tanim_tree.animation_finished.connect(_on_animation_finished)\n\n"
 	
 	# _on_animation_finished function

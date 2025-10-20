@@ -28,3 +28,31 @@ func tool_get_godot_scripting_guidline() -> String:
 	# Close the file
 	file.close()
 	return content
+
+
+## CRITICAL: IF users question is not sufficient OR you are not sure what to do, use this tool.
+## Use ONLY YES/NO decisions.
+## Ask: "Should I ...?" ✓
+## WRONG: "Can you describe your problem?" ✗
+## WRONG: "What do you want to do?" ✗
+## [param questions]: Array of question strings ["Should I x?", "Do you want y?", ...]
+## Returns String with user's answers or empty String if cancelled.
+func tool_ask_user_decisions(questions: Array) -> String:
+	# Convert questions array to dictionary format for show_decisions
+	var checkboxes: Dictionary = {}
+	for i in range(questions.size()):
+		var key = "question_%d" % i
+		checkboxes[key] = [questions[i], false]
+	
+	var result = await _feedback.show_decisions("Your AI-Assistant wants to clarify something:", "Assistant", checkboxes, false)
+	
+	# Convert dictionary result to readable string
+	if result.is_empty():
+		return ""
+	
+	var output: String = ""
+	for question in result.keys():
+		var answer = "YES" if result[question] else "NO"
+		output += question + ": " + answer + "\n"
+	print(output.strip_edges())
+	return output.strip_edges()
