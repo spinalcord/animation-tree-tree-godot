@@ -117,7 +117,6 @@ func add_node(parent_path: String, config: Dictionary) -> bool:
 			blend_position = bp
 		elif bp is float or bp is int:
 			blend_position = float(bp)
-	
 	if _add_to_container(parent, node, final_name, final_position, blend_position):
 		TreeDebug.msg("Added node: " + parent_path + "/" + final_name)
 		return true
@@ -886,6 +885,7 @@ func _add_to_container(parent: AnimationNode, node: AnimationNode, name: String,
 		var bt = parent as AnimationNodeBlendTree
 		name = _ensure_unique_name_blend(bt, name)
 		bt.add_node(name, node, position)
+		
 		_emit_changed(bt)
 		return true
 	elif parent is AnimationNodeBlendSpace1D:
@@ -935,8 +935,8 @@ func _ensure_unique_name_state(sm: AnimationNodeStateMachine, base_name: String)
 func _ensure_unique_name_blend(bt: AnimationNodeBlendTree, base_name: String) -> String:
 	var test_name = base_name
 	var counter = 1
-	
-	while is_instance_valid(bt.get_node(test_name)):
+	# while is_instance_valid(bt.get_node(test_name)): # FIX:  ERROR: scene/animation/animation_blend_tree.cpp:1479 - Condition "!nodes.has(p_name)" is true. Returning: Ref<AnimationNode>()
+	while bt.has_node(test_name):
 		counter += 1
 		test_name = base_name + str(counter)
 		if counter > 1000:

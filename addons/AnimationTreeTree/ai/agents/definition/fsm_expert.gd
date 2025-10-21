@@ -71,7 +71,7 @@ func process(con_ai: ConAI, system_prompt: String, user_input: String) -> void:
 	# can confuse the language model. This will lead to better ONE-SHOT AnimationTree structure results.
 	if tree_view != null and tree_view.get_root() != null and tree_view.get_root().get_first_child() == null:
 		fsm_tools = null
-		print("no tools needed")
+		TreeDebug.msg("No Tool Use")
 	else:
 		fsm_tools = FSMExpertTools.new(_container)
 	

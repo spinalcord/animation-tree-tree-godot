@@ -48,7 +48,6 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 	if blueprint.is_empty():
 		TreeDebug.msg("Script must specify 'Blueprint' node")
 		return false
-	
 	#region apply blueprint conventions
 	if blueprint.has("name") == false:
 		if target_path != null:
@@ -313,7 +312,6 @@ func _build_node(parent_path: String, node_data: Dictionary, parent_node: Animat
 	var children = node_data.get("children", [])
 	var transitions = node_data.get("transitions", [])
 	var connections = node_data.get("connections", [])  # Add this line
-	
 	# Extract additional properties
 	var properties = {}
 	for key in node_data:
@@ -375,12 +373,11 @@ func _build_node(parent_path: String, node_data: Dictionary, parent_node: Animat
 			if not node_name.is_valid_int():
 				_add_error("BlendSpace children must have numeric names, got: " + node_name)
 				return false
-		
 		# Create the node
 		if not _builder.add_node(parent_path, config):
 			_add_error("Failed to create node: " + node_name)
 			return false
-		
+			
 		if parent_is_blendspace:
 			created_node = _builder.get_last_blend_point_node(parent_path)
 			if not is_instance_valid(created_node):

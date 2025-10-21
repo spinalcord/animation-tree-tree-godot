@@ -304,7 +304,7 @@ func _process_message(tools: ConAITool, msg_array: Array, conversation: Conversa
 						next_tool_calls = tool_choice["tool_calls"]
 					
 					if next_tool_calls.size() > 0:
-						print("🔄 AI requested " + str(next_tool_calls.size()) + " more tools (iteration " + str(current_iteration) + ")")
+						#print("🔄 AI requested " + str(next_tool_calls.size()) + " more tools (iteration " + str(current_iteration) + ")")
 						
 						# Add assistant message with tool calls
 						var next_assistant_message = {
