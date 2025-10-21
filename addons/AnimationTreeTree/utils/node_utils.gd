@@ -48,36 +48,32 @@ static func get_node_at_path(root: AnimationNode, path: String) -> AnimationNode
 	if not is_instance_valid(root):
 		return null
 	
-	# Empty path or root path returns root
 	if path.is_empty() or path == "/":
 		return root
 	
-	# Split path and traverse
-	var parts = path.split("/", false)  # false = don't include empty strings
+	var parts = path.split("/", false)
 	var current = root
 	
 	for part in parts:
 		if not is_instance_valid(current):
 			return null
 		
-		# Check if node exists first, then get it
 		var next_node = null
 		if current is AnimationNodeStateMachine:
-			# Check existence before trying to get the node
 			if not current.has_node(part):
 				return null
 			next_node = current.get_node(part)
 		elif current is AnimationNodeBlendTree:
-			# For BlendTree, try to get node (returns null if not found)
+			# Check existence first, same as StateMachine
+			if not current.has_node(part):
+				return null
 			next_node = current.get_node(part)
 		elif current is AnimationNodeBlendSpace1D:
-			# For BlendSpace1D, part is the blend point index
 			var index = int(part)
 			if index < 0 or index >= current.get_blend_point_count():
 				return null
 			next_node = current.get_blend_point_node(index)
 		elif current is AnimationNodeBlendSpace2D:
-			# For BlendSpace2D, part is the blend point index
 			var index = int(part)
 			if index < 0 or index >= current.get_blend_point_count():
 				return null
@@ -91,6 +87,7 @@ static func get_node_at_path(root: AnimationNode, path: String) -> AnimationNode
 		current = next_node
 	
 	return current
+	
 # Get parent path from a node path (pure string manipulation)
 static func get_parent_path(path: String) -> String:
 	if not path.contains("/"):
@@ -125,11 +122,11 @@ static func has_node_at_path(root: AnimationNode, path: String) -> bool:
 	
 	var node_name = get_node_name_from_path(path)
 	
-	# Use native has_node() method
+	# Use native has_node() method for both types
 	if parent is AnimationNodeStateMachine:
 		return parent.has_node(node_name)
 	elif parent is AnimationNodeBlendTree:
-		return is_instance_valid(parent.get_node(node_name))
+		return parent.has_node(node_name)  # Changed from get_node() to has_node()
 	
 	return false
 
