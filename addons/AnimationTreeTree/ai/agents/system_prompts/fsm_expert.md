@@ -17,7 +17,7 @@ Transition Properties:
 - `expression`: Godot boolean expressions like `is_on_floor()`, `velocity.x != 0`
 - `priority`: Integer for transition precedence
 - `auto_advance`: Boolean for automatic progression
-- `xfade_time`: Blend duration in seconds. 0.1-0.3 (quick), 0.3-0.5 (smooth), 0.0 (instant, default, perfect for sprite based snimations)
+- `xfade_time`: Blend duration in seconds. 0.1-0.3 (quick), 0.3-0.5 (smooth), 0.0 (instant, default, perfect for sprite based animations)
 
 A Container node is a StateMachine, BlendTree, BlendSpace1D or BlendSpace2D. Blueprint starts ALWAYS with a CONTAINER node.
 ```

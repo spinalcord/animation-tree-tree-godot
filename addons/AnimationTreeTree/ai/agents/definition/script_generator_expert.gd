@@ -20,7 +20,8 @@ func _init(ai_manager: AIManager, container: DependencyContainer) -> void:
 
 func get_config_fields() -> Array[ConfigField]:
 	var fields: Array[ConfigField] = []
-
+	
+	
 	return fields
 
 func get_system_prompt() -> String:

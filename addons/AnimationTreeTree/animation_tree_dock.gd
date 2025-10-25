@@ -52,7 +52,6 @@ func _initialize_managers() -> void:
 	ui_manager = UIManager.new()
 	tree_manager = TreeManager.new()
 	state_manager = StateManager.new()
-	export_manager = ExportManager.new()
 	ai_manager = AIManager.new()
 
 # Get button configuration with Callables
@@ -564,6 +563,7 @@ func _on_blueprint_pressed() -> void:
 	if not selected_animation_tree:
 		TreeDebug.msg("No AnimationTree selected")
 		return
+	export_manager = ExportManager.new()
 	
 	var yaml_output: String
 	if node_paths.is_empty():
@@ -578,6 +578,11 @@ func _on_boilerplate_pressed() -> void:
 	if not selected_animation_tree:
 		TreeDebug.msg("No AnimationTree selected")
 		return
+		
+	var boilerplate_container: DependencyContainer = DependencyContainer.new()
+	boilerplate_container.bind("CurrentAnimationTree", selected_animation_tree)
+	
+	export_manager = ExportManager.new(boilerplate_container)
 	
 	var boilerplate = await feedback.show_text("This is automatically generated boilerplate based on your selection:", "Boilerplate of selected nodes",export_manager.export_tree_as_boilerplate(selected_animation_tree, node_paths), true)
 

@@ -48,7 +48,7 @@ func tool_ask_user_decisions(questions: Array) -> String:
 ## [param target_paths]: target paths e.g. ["", "StateA/StateB"] returns structure of Root and structure of StateB
 func tool_get_blueprint(target_paths: Array) -> Array[String]:
 	
-	var export_manager: ExportManager = ExportManager.new()
+	var export_manager: ExportManager = ExportManager.new(_container)
 	
 	# This condition returns the whole tree, we don't need the other paths additionally, this saves expensive context.
 	if target_paths.has("") or target_paths.has("Root"):

@@ -43,7 +43,7 @@ func execute_ai_action(container: DependencyContainer, backup_callable: Callable
 	_selected_paths = container.grab("SelectedNodePaths")
 	_current_expression_base_node_script = container.grab("CurrentExpressionBaseNodeScript")
 	_all_parent_paths = container.grab("AllNodeParentPaths")
-	_export_manager = ExportManager.new()
+	_export_manager = ExportManager.new(container)
 	
 	_register_experts(container)
 	
@@ -64,11 +64,17 @@ func execute_ai_action(container: DependencyContainer, backup_callable: Callable
 	var con_ai: ConAI = ConAI.new(container)
 	
 	var node_type_dict = prompt_dialog.get_value("node_type")
-	print(node_type_dict)
+	#print(node_type_dict)
 	var avaible_types: Array[String] = []
 	for key in node_type_dict.keys():
 		if node_type_dict[key] == true:
 			avaible_types.append(key)
+			
+	var avaible_animations_dict = prompt_dialog.get_value("avaible_animations")
+	var avaible_animations: Array[String] = []
+	for key in avaible_animations_dict.keys():
+		if avaible_animations_dict[key] == true:
+			avaible_animations.append(key)
 	
 	var expert_type = prompt_dialog.get_value("expert")
 	var user_input: String = prompt_dialog.get_value("prompt")
@@ -91,7 +97,7 @@ func execute_ai_action(container: DependencyContainer, backup_callable: Callable
 	var system_prompt = _build_system_prompt(
 		system_prompt_path,
 		_target_path,
-		_current_animations,
+		avaible_animations,
 		script_content,
 		avaible_types,
 		boilerplat,
@@ -125,6 +131,20 @@ func _create_prompt_dialog() -> ConfigDialog:
 		"string_multi", 
 		""
 	))
+
+	var _current_animations_decisions: Dictionary = {}
+	for animation in _current_animations:
+		_current_animations_decisions[animation] = true
+
+	prompt_fields.append(ConfigField.new(
+		"avaible_animations", 
+		"Avaible animations", 
+		"Select which animation should the experts included/excluded", 
+		"General", 
+		"decision", 
+		_current_animations_decisions
+	))
+	
 	
 	for expert in _experts.values():
 		var expert_fields = expert.get_config_fields()

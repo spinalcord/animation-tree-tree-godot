@@ -13,8 +13,10 @@ class_name ConAITool
 
 var _animation_tree: AnimationTree
 var _feedback: FeedbackDialog = FeedbackDialog.new()
+var _container: DependencyContainer
 
 func _init(container: DependencyContainer):
+	_container = container
 	_animation_tree = container.grab("CurrentAnimationTree")
 	extract_tool_descriptions()
 

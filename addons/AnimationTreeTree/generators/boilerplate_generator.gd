@@ -10,6 +10,20 @@
 
 class_name BoilerplateGenerator
 
+var _boilerplate_container: DependencyContainer
+var _anima_tree: AnimationTree
+var _is_root_motion_track_assigned: bool = false
+
+func _init(boilerplate_container: DependencyContainer = null) -> void:
+	_boilerplate_container = boilerplate_container
+	
+	if boilerplate_container != null:
+		_anima_tree = boilerplate_container.grab("CurrentAnimationTree")
+		_is_root_motion_track_assigned = !_anima_tree.root_motion_track.is_empty()
+		
+	if _is_root_motion_track_assigned:
+		print(_anima_tree.root_motion_track)
+	
 # Collect all blend spaces (1D and 2D)
 func collect_blend_spaces(node: AnimationNode, path: String) -> Array[Dictionary]:
 	var blend_spaces: Array[Dictionary] = []
@@ -207,6 +221,11 @@ func generate_complete_boilerplate(state_machines: Array[Dictionary], blend_spac
 	code += "@export var anim_player: AnimationPlayer\n"
 	code += "@export var anim_tree: AnimationTree\n\n"
 	
+	# Gravity constant
+	code += "# Depends on the node type choose the appropriate gravity constant\n"
+	code += "#@onready var GRAVITY: float = ProjectSettings.get_setting(\"physics/2d/default_gravity\")\n"
+	code += "#@onready var GRAVITY: float = ProjectSettings.get_setting(\"physics/3d/default_gravity\")\n\n"
+	
 	# OnReady variables for state machines
 	if not state_machines.is_empty():
 		code += "# Generated AnimationNodeStateMachinePlayback variables\n"
@@ -253,12 +272,39 @@ func generate_complete_boilerplate(state_machines: Array[Dictionary], blend_spac
 	
 	# _physics_process function with match statements
 	code += "func _physics_process(delta: float) -> void:\n"
+	code += "\t#region Setup Gravity\n"
+	code += "\tif not is_on_floor():\n"
+	code += "\t\tvelocity.y -= GRAVITY * delta\n"
+	code += "\telse:\n"
+	code += "\t\tvelocity.y = 0.0\n"
+	code += "\t#endregion Setup Gravity\n"
+	code += "\t\n"
+	
+	if _is_root_motion_track_assigned:
+		code += "\t#region Setup Root Motion\n"
+		code += "\t# Get root motion from AnimationTree\n"
+		code += "\tvar root_motion_position: Vector3 = anim_tree.get_root_motion_position()\n"
+		code += "\tvar root_motion_rotation: Quaternion = anim_tree.get_root_motion_rotation()\n"
+		code += "\t\n"
+		code += "\t# Apply root motion rotation (from animations)\n"
+		code += "\tquaternion = quaternion * root_motion_rotation\n"
+		code += "\t\n"
+		code += "\t# Calculate velocity from root motion using rotation accumulator\n"
+		code += "\tvar root_rotation_accumulator: Quaternion = anim_tree.get_root_motion_rotation_accumulator()\n"
+		code += "\tvar horizontal_velocity: Vector3 = (root_rotation_accumulator.inverse() * quaternion) * root_motion_position / delta\n"
+		code += "\t\n"
+		code += "\tvelocity.x = horizontal_velocity.x\n"
+		code += "\tvelocity.z = horizontal_velocity.z\n"
+		code += "\t#endregion Setup Root Motion\n"
+		code += "\t\n"
+	
 	if state_machines.is_empty():
 		code += "\tpass\n"
 	else:
 		var root_state_machines = _find_root_state_machines(state_machines)
 		for root_sm in root_state_machines:
 			code += _generate_nested_match_statements(root_sm, state_machines, 1)
+		code += "\t\n"
 		code += "\t# move_and_slide() # Decomment if Node is a CharacterBody-Node-Type\n"
 		
 	
