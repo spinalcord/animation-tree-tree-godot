@@ -369,11 +369,13 @@ func add_transition(state_machine_path: String, config: Dictionary) -> bool:
 		trans.advance_expression = config["expression"]
 	
 	# Set other properties
-	trans.xfade_time = config.get("fade_time", 0.0)
+	trans.xfade_time = config.get("xfade_time", config.get("fade_time", 0.0))
 	trans.priority = config.get("priority", 1)
 	trans.reset = config.get("reset", true)
 	
-	if config.has("curve"):
+	if config.has("xfade_curve"):
+		trans.xfade_curve = config["xfade_curve"]
+	elif config.has("curve"):
 		trans.xfade_curve = config["curve"]
 	
 	sm.add_transition(from_state, to_state, trans)

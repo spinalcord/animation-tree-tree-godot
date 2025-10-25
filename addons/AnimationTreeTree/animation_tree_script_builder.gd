@@ -572,11 +572,13 @@ func _build_transition_direct(state_machine: AnimationNode, transition_data: Dic
 	if transition_data.has("expression"):
 		trans.advance_expression = transition_data["expression"]
 	
-	trans.xfade_time = transition_data.get("fade_time", 0.0)
+	trans.xfade_time = transition_data.get("xfade_time", transition_data.get("fade_time", 0.0))
 	trans.priority = transition_data.get("priority", 1)
 	trans.reset = transition_data.get("reset", true)
 	
-	if transition_data.has("curve"):
+	if transition_data.has("xfade_curve"):
+		trans.xfade_curve = transition_data["xfade_curve"]
+	elif transition_data.has("curve"):
 		trans.xfade_curve = transition_data["curve"]
 	
 	sm.add_transition(from_state, to_state, trans)
