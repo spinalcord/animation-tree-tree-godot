@@ -318,13 +318,13 @@ func extract_block_from_markdown(text: String, block_name: String) -> Array:
 	
 	return yaml_blocks
 
-func _on_ai_pressed():
+func _dependencies() -> DependencyContainer:
 	var selected_item: TreeItem = tree_view.get_selected()
 	var target_path: String = ""
 	if selected_item != null:
 		target_path = MetadataUtils.get_path_from_metadata(selected_item.get_metadata(0))
 		target_path = _get_parent_path(target_path)
-	
+		
 	var container: DependencyContainer = DependencyContainer.new()
 	container.bind("CurrentAnimationTree", selected_animation_tree)
 	container.bind("TargetPath", target_path)
@@ -334,9 +334,11 @@ func _on_ai_pressed():
 	container.bind("SelectedNodeParentPaths", _get_selected_node_parent_paths())
 	container.bind("AllNodeParentPaths", _get_all_parents_node_paths())
 	container.bind("TreeView", tree_view)
+	return container
 
-	
-	await ai_manager.execute_ai_action(container, create_backup)
+
+func _on_ai_pressed():
+	await ai_manager.execute_ai_action(await _dependencies(), create_backup)
 	
 	_refresh_tree_view()
 
@@ -366,8 +368,6 @@ func _ensure_gitignore_exists() -> void:
 func _on_settings_pressed() -> void:
 	_ensure_gitignore_exists()
 	var fields: Array[ConfigField] = []
-	
-
 	
 	fields.append(ConfigField.new(
 		"model", 
@@ -578,11 +578,8 @@ func _on_boilerplate_pressed() -> void:
 	if not selected_animation_tree:
 		TreeDebug.msg("No AnimationTree selected")
 		return
-		
-	var boilerplate_container: DependencyContainer = DependencyContainer.new()
-	boilerplate_container.bind("CurrentAnimationTree", selected_animation_tree)
 	
-	export_manager = ExportManager.new(boilerplate_container)
+	export_manager = ExportManager.new(await _dependencies())
 	
 	var boilerplate = await feedback.show_text("This is automatically generated boilerplate based on your selection:", "Boilerplate of selected nodes",export_manager.export_tree_as_boilerplate(selected_animation_tree, node_paths), true)
 
