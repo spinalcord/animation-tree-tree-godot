@@ -220,6 +220,22 @@ func show_decisions(message: String, title: String, checkboxes: Dictionary, retu
 	spacer.custom_minimum_size = Vector2(0, 10)
 	main_container.add_child(spacer)
 	
+	# Add selection buttons
+	var btn_container = HBoxContainer.new()
+	var btn_select_all = Button.new()
+	btn_select_all.text = "Select All"
+	var btn_deselect_all = Button.new()
+	btn_deselect_all.text = "Deselect All"
+	
+	btn_container.add_child(btn_deselect_all)
+	btn_container.add_child(btn_select_all)
+	main_container.add_child(btn_container)
+
+	# Add spacing after buttons
+	var spacer2 = Control.new()
+	spacer2.custom_minimum_size = Vector2(0, 5)
+	main_container.add_child(spacer2)
+	
 	# Create ScrollContainer for checkboxes
 	var scroll_container = ScrollContainer.new()
 	scroll_container.custom_minimum_size = Vector2(300, 200)
@@ -253,6 +269,17 @@ func show_decisions(message: String, title: String, checkboxes: Dictionary, retu
 		
 		# Store with key and label for later retrieval
 		checkbox_nodes[checkbox_key] = {"node": checkbox, "label": label_text}
+	
+	# Connect selection buttons
+	btn_select_all.pressed.connect(func():
+		for key in checkbox_nodes:
+			checkbox_nodes[key]["node"].button_pressed = true
+	)
+	
+	btn_deselect_all.pressed.connect(func():
+		for key in checkbox_nodes:
+			checkbox_nodes[key]["node"].button_pressed = false
+	)
 	
 	# Add checkbox container to scroll container
 	scroll_container.add_child(checkbox_container)
