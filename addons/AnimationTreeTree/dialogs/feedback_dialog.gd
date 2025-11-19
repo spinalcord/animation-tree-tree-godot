@@ -333,7 +333,7 @@ func show_text(message: String, title: String, default_text: String = "", multil
 	if multiline:
 		input_field = TextEdit.new()
 		input_field.text = default_text
-		input_field.custom_minimum_size = Vector2(300, 100)
+		input_field.custom_minimum_size = Vector2(700, 400)
 		input_field.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		input_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	else:

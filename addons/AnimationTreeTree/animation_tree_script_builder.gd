@@ -89,7 +89,7 @@ func build_from_script(animation_tree: AnimationTree, script_text: String) -> bo
 	throw_out_existing_non_container_nodes(target_path, blueprint) # e.g. idle already exists => throw it out
 	# Validate all animations exist BEFORE building
 	if not _validate_animations(animation_tree, blueprint):
-		_add_error("ERROR: Build aborted due to missing animations. Checkout your blueprint")
+		_add_error("ERROR: Build aborted your AI model assumes Animations that don't exist.")
 	
 	if _errors.size() > 0:
 		var error_message = ""

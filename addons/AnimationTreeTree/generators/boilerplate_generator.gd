@@ -261,9 +261,18 @@ func generate_complete_boilerplate(state_machines: Array[Dictionary], blend_spac
 		code += "\n"
 	
 	# _ready function
+		# _ready function
 	code += "func _ready() -> void:\n"
 	code += "\tassert(anim_tree != null, \"AnimationTree was not assigned\")\n"
 	code += "\tassert(anim_player != null, \"AnimationPlayer was not assigned\")\n"
+	
+	if _is_root_motion_track_assigned:
+		if _anima_tree.callback_mode_process != AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS:
+			code += "\t#region Setup Root Motion\n"
+			code += "\t# You can avoid this line if you set Animation Tree -> Callback Mode -> Process to \"Physics\"\n"
+			code += "\tanim_tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS\n"
+			code += "\t#endregion Setup Root Motion\n"
+
 	code += "\tanim_tree.animation_finished.connect(_on_animation_finished)\n\n"
 	
 	# _on_animation_finished function

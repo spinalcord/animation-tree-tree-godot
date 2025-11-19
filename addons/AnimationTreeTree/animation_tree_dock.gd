@@ -435,7 +435,7 @@ func _on_settings_pressed() -> void:
 	fields.append(ConfigField.new(
 	"max_backup_count", 
 	"Max Backup Count", 
-	"Maximum number of backups to keep (sliding window). Oldest backups will be deleted automatically.", 
+	"Maximum number of backups per scene to keep (sliding window). Oldest backups will be deleted automatically.", 
 	"Backup", 
 	"int", 
 	[2, 6, 20]
