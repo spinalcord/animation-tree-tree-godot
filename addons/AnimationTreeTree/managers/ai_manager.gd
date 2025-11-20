@@ -35,6 +35,7 @@ func _register_experts(container: DependencyContainer) -> void:
 	
 	_experts[fsm_expert.name] = fsm_expert
 	_experts[script_expert.name] = script_expert
+	
 func execute_ai_action(container: DependencyContainer, backup_callable: Callable) -> String:
 	_animation_tree = container.grab("CurrentAnimationTree")
 	_target_path = container.grab("TargetPath")

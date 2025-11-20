@@ -274,7 +274,7 @@ func delete_nodes(node_paths: Array[String]) -> bool:
 # {
 #   "from": "StateName",
 #   "to": "StateName",
-#   "switch_mode": String ("immidiate", "at_end", "sync"),
+#   "switch_mode": String ("immediate", "at_end", "sync"),
 #   "advance_mode": bool, (true = auto (default), false = enabled)
 #   "condition": String (optional, advance_condition name),
 #   "expression": String (optional, advance_expression),
@@ -355,9 +355,9 @@ func add_transition(state_machine_path: String, config: Dictionary) -> bool:
 	# Set advance mode
 	if config.has("advance_mode"):
 		if config["advance_mode"] == true:
-			AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
+			trans.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
 		else:
-			AnimationNodeStateMachineTransition.ADVANCE_MODE_ENABLED
+			trans.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_ENABLED
 	else:
 		trans.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
 	
